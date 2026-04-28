@@ -150,7 +150,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 .temp-input { flex: 1; padding: 10px 12px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 700; color: var(--navy); outline: none; text-align: center; }
 .temp-input:focus { border-color: var(--blue); }
 .temp-unit { font-size: 13px; color: var(--gray-400); font-weight: 600; }
-.temp-flag { margin-top: 7px; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; display: none; }
+.temp-flag { margin-top: 7px; font-size: 13px; font-weight: 700; }
 .temp-flag.green { background: var(--green-light); color: #1a8a4a; display: block; }
 .temp-flag.yellow { background: var(--yellow-light); color: #9a6500; display: block; }
 .temp-flag.red { background: var(--red-light); color: var(--red); display: block; }
@@ -599,7 +599,7 @@ function renderTasks(cl) {
           <div class="photo-area-text"><strong>${state.photo?'Photo captured':'Tap thermometer photo'}</strong><span>${state.photo?'Tap to retake':'Required'}</span></div>
           <div id="thumb-${task.id}" style="width:36px;height:36px;border-radius:8px;background:transparent;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;flex-shrink:0;margin-left:auto;"></div></div>
         ${state.value==='no'||state.temp<135&&state.temp?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Action taken: reheat, discard, notify manager..." data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
-        <button class="reroll-btn" onclick="rerollSoup()">🎲 We don't have this soup — pick another</button>`;
+`;
       } else if (task.type==='temp-cooler' || task.type==='temp-freezer') {
         const isFreezer = task.type==='temp-freezer';
         html += `<div class="task-top"><div class="task-text">
@@ -663,16 +663,16 @@ function renderTasks(cl) {
 function buildCoolerFlagHTML(temp) {
   temp = parseFloat(temp);
   if (isNaN(temp)) return '';
-  if (temp <= 40) return '<span style="color:#1a8a4a;font-weight:700;">🟢 Good — holding at proper temp</span>';
-  if (temp <= 45) return '<span style="color:#9a6500;font-weight:700;">🟡 Attention — reheat protocols do not apply. Notify manager immediately.</span>';
-  return '<span style="color:#E74C3C;font-weight:700;">🔴 DANGER — Do not use. Remove product. Notify manager NOW.</span>';
+  if (temp <= 40) return '<div style="padding:8px 10px;border-radius:8px;background:#EAFAF1;color:#1a8a4a;font-weight:700;font-size:13px;margin-top:6px;">🟢 Good — holding at proper temp</div>';
+  if (temp <= 45) return '<div style="padding:8px 10px;border-radius:8px;background:#FEF9EC;color:#9a6500;font-weight:700;font-size:13px;margin-top:6px;">🟡 Attention — Notify manager immediately</div>';
+  return '<div style="padding:8px 10px;border-radius:8px;background:#FDEDEC;color:#E74C3C;font-weight:700;font-size:13px;margin-top:6px;">🔴 DANGER — Do not use. Remove product. Notify manager NOW.</div>';
 }
 function buildFreezerFlagHTML(temp) {
   temp = parseFloat(temp);
   if (isNaN(temp)) return '';
-  if (temp <= 0) return '<span style="color:#1a8a4a;font-weight:700;">🟢 Good — holding at proper temp</span>';
-  if (temp <= 10) return '<span style="color:#9a6500;font-weight:700;">🟡 Attention — Notify manager immediately.</span>';
-  return '<span style="color:#E74C3C;font-weight:700;">🔴 DANGER — Check product integrity. Notify manager NOW.</span>';
+  if (temp <= 0) return '<div style="padding:8px 10px;border-radius:8px;background:#EAFAF1;color:#1a8a4a;font-weight:700;font-size:13px;margin-top:6px;">🟢 Good — holding at proper temp</div>';
+  if (temp <= 10) return '<div style="padding:8px 10px;border-radius:8px;background:#FEF9EC;color:#9a6500;font-weight:700;font-size:13px;margin-top:6px;">🟡 Attention — Notify manager immediately</div>';
+  return '<div style="padding:8px 10px;border-radius:8px;background:#FDEDEC;color:#E74C3C;font-weight:700;font-size:13px;margin-top:6px;">🔴 DANGER — Check product integrity. Notify manager NOW.</div>';
 }
 function buildSoupFlag(temp, taskId, returnHTML) {
   temp = parseFloat(temp);
@@ -688,19 +688,24 @@ function buildSoupFlag(temp, taskId, returnHTML) {
 
 function evalCoolerTemp(taskId, val) {
   const temp = parseFloat(val);
-  const el = document.getElementById(`flag-${taskId}`);
-  if (el) el.innerHTML = buildCoolerFlagHTML(temp);
+  const el = document.getElementById('flag-' + taskId);
+  if (el) {
+    el.style.display = 'block';
+    el.innerHTML = buildCoolerFlagHTML(temp);
+  }
   const alert = !isNaN(temp) && temp > 40;
   taskStates[taskId] = { ...(taskStates[taskId]||{}), temp:val, value:'temp', tempAlert:alert };
   saveProgress(currentChecklistId, taskStates);
-  // show/hide corrective box
   updateCorrectiveBox(taskId, alert);
   updateProgress();
 }
 function evalFreezerTemp(taskId, val) {
   const temp = parseFloat(val);
-  const el = document.getElementById(`flag-${taskId}`);
-  if (el) el.innerHTML = buildFreezerFlagHTML(temp);
+  const el = document.getElementById('flag-' + taskId);
+  if (el) {
+    el.style.display = 'block';
+    el.innerHTML = buildFreezerFlagHTML(temp);
+  }
   const alert = !isNaN(temp) && temp > 0;
   taskStates[taskId] = { ...(taskStates[taskId]||{}), temp:val, value:'temp', tempAlert:alert };
   saveProgress(currentChecklistId, taskStates);
@@ -767,19 +772,6 @@ function rerollBaked() {
   saveProgress(currentChecklistId, taskStates);
   const _cl2 = currentChecklistId==='midday'?MIDDAY_CHECKLIST:FOH_OPEN_CHECKLIST;
   renderTasks(_cl2);
-  updateProgress();
-  setTimeout(()=>{ sigCanvas=document.getElementById('sig-canvas'); if(sigCanvas)setupSignature(); },50);
-}
-function rerollSoup() {
-  let current = randomSelections.soup;
-  let pool = SOUPS.filter(s => s !== current);
-  let next = pool[Math.floor(Math.random()*pool.length)];
-  randomSelections.soup = next;
-  sessionStorage.setItem(getRandKey(currentChecklistId,'soup'), next);
-  delete taskStates['df6'];
-  saveProgress(currentChecklistId, taskStates);
-  const _cl3 = currentChecklistId==='midday'?MIDDAY_CHECKLIST:FOH_OPEN_CHECKLIST;
-  renderTasks(_cl3);
   updateProgress();
   setTimeout(()=>{ sigCanvas=document.getElementById('sig-canvas'); if(sigCanvas)setupSignature(); },50);
 }
