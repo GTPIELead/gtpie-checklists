@@ -552,11 +552,11 @@ function renderTasks(cl) {
           <button class="yn-btn no-btn ${nActive}" data-task="${task.id}" data-val="no" onclick="setYN(this.dataset.task, this.dataset.val)">NO</button>
         </div>
         ${state.value==='no'?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Describe the issue and what action was taken..." data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
-        <div class="photo-area ${state.photo?'has-photo':''}" id="photo-area-${task.id}">
-          <input type="file" accept="image/*" capture="environment" id="photo-input-${task.id}" style="display:none" onchange="handlePhoto('${task.id}',this)">
+        <label class="photo-area ${state.photo?'has-photo':''}" id="photo-area-${task.id}" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;border-radius:8px;border:1.5px dashed #E2E6EC;background:#F0F2F5;margin-top:8px;">
+          <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="handlePhoto(\'${task.id}\',this)">
           <div class="photo-area-icon">${state.photo?'📷':'📸'}</div>
           <div class="photo-area-text"><strong>${state.photo?'Photo captured':'Tap to take photo'}</strong><span>${state.photo?'Tap to retake':'Required'}</span></div>
-          <div id="thumb-${task.id}" style="width:36px;height:36px;border-radius:8px;background:transparent;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;flex-shrink:0;margin-left:auto;"></div></div>
+        </label>
         <button class="reroll-btn" onclick="rerollPie()">🎲 We don't have this pie — pick another</button>`;
       } else if (task.type==='random-baked') {
         const baked = randomSelections.baked || BAKED_GOODS[0];
@@ -571,11 +571,11 @@ function renderTasks(cl) {
           <button class="yn-btn no-btn ${nActive}" data-task="${task.id}" data-val="no" onclick="setYN(this.dataset.task, this.dataset.val)">NO</button>
         </div>
         ${state.value==='no'?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Describe the issue and what action was taken..." data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
-        <div class="photo-area ${state.photo?'has-photo':''}" id="photo-area-${task.id}">
-          <input type="file" accept="image/*" capture="environment" id="photo-input-${task.id}" style="display:none" onchange="handlePhoto('${task.id}',this)">
+        <label class="photo-area ${state.photo?'has-photo':''}" id="photo-area-${task.id}" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;border-radius:8px;border:1.5px dashed #E2E6EC;background:#F0F2F5;margin-top:8px;">
+          <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="handlePhoto(\'${task.id}\',this)">
           <div class="photo-area-icon">${state.photo?'📷':'📸'}</div>
           <div class="photo-area-text"><strong>${state.photo?'Photo captured':'Tap to take photo'}</strong><span>${state.photo?'Tap to retake':'Required'}</span></div>
-          <div id="thumb-${task.id}" style="width:36px;height:36px;border-radius:8px;background:transparent;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;flex-shrink:0;margin-left:auto;"></div></div>
+        </label>
         <button class="reroll-btn" onclick="rerollBaked()">🎲 We don't have this item — pick another</button>`;
       } else if (task.type==='random-soup') {
         const soup = randomSelections.soup || SOUPS[0];
@@ -608,7 +608,7 @@ function renderTasks(cl) {
         </div></div>
         <div class="temp-input-wrap">
           <div class="temp-row">
-            <input class="temp-input" id="temp-${task.id}" type="number" placeholder="---" value="${state.temp||''}" data-task="${task.id}" data-freezer="${isFreezer}" oninput="isFreezer?evalFreezerTemp(this.dataset.task,this.value):evalCoolerTemp(this.dataset.task,this.value)">
+            <input class="temp-input" id="temp-${task.id}" type="number" placeholder="---" value="${state.temp||''}" data-task="${task.id}" data-freezer="${isFreezer}" oninput="this.dataset.freezer==='true'?evalFreezerTemp(this.dataset.task,this.value):evalCoolerTemp(this.dataset.task,this.value)">
             <span class="temp-unit">°F</span>
           </div>
           <div class="temp-flag" id="flag-${task.id}">${state.temp?(isFreezer?buildFreezerFlagHTML(state.temp):buildCoolerFlagHTML(state.temp)):''}</div>
