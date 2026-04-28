@@ -381,7 +381,25 @@ function getCompletedKey(id) { return `gtpie_done_${getTodayKey()}_${id}`; }
 function markCompleted(id) { sessionStorage.setItem(getCompletedKey(id), 'true'); }
 function isCompleted(id) { return sessionStorage.getItem(getCompletedKey(id)) === 'true'; }
 function getProgressKey(id) { return `gtpie_prog_${getTodayKey()}_${id}`; }
-function saveProgress(id, states) { sessionStorage.setItem(getProgressKey(id), JSON.stringify(states)); }
+function saveProgress(id, states) {
+  // Strip photo flags before saving to avoid storage bloat
+  const clean = {};
+  Object.keys(states).forEach(k => {
+    clean[k] = { ...states[k] };
+    delete clean[k].photo;
+  });
+  try {
+    sessionStorage.setItem(getProgressKey(id), JSON.stringify(clean));
+  } catch(e) {
+    // Storage full - clear old keys and retry
+    const today = getTodayKey();
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i);
+      if (key && !key.includes(today)) sessionStorage.removeItem(key);
+    }
+    try { sessionStorage.setItem(getProgressKey(id), JSON.stringify(clean)); } catch(e2) {}
+  }
+}
 function loadProgress(id) { try { return JSON.parse(sessionStorage.getItem(getProgressKey(id))) || {}; } catch { return {}; } }
 function getRandKey(id, type) { return `gtpie_rand_${getTodayKey()}_${id}_${type}`; }
 
@@ -839,33 +857,24 @@ function handlePhoto(taskId, input) {
   try {
     const file = input.files[0];
     if (!file) return;
-    // Mark as captured in memory only - do NOT store image data in sessionStorage
+    // Track in memory ONLY - never touch sessionStorage for photos
     if (!taskStates[taskId]) taskStates[taskId] = {};
     taskStates[taskId].photo = 'captured';
-    // Save just the flag (no image data) to sessionStorage
-    const lightState = {};
-    Object.keys(taskStates).forEach(k => {
-      lightState[k] = { ...taskStates[k] };
-      delete lightState[k].photoData;
-    });
-    saveProgress(currentChecklistId, lightState);
-    // Update UI immediately without reading the file into memory
+    // Update UI
     const area = document.getElementById('photo-area-' + taskId);
     if (area) {
-      area.classList.add('has-photo');
       area.style.background = '#EAF4FD';
-      area.style.borderColor = '#7BBDE1';
-      area.style.borderStyle = 'solid';
+      area.style.border = '1.5px solid #7BBDE1';
       const icon = area.querySelector('.photo-area-icon');
       const txt = area.querySelector('.photo-area-text');
       if (icon) icon.textContent = '📷';
       if (txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
     }
-    // Reset input
+    // Reset input immediately to free memory
     input.value = '';
-    showToast('Photo captured ✓', 'success');
+    showToast('✓ Photo captured', 'success');
   } catch(err) {
-    showToast('Camera error. Try again.', 'error');
+    showToast('Try again', 'error');
   }
 }
 
