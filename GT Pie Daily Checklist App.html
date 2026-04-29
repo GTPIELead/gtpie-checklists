@@ -942,22 +942,39 @@ function handlePhoto(taskId, input) {
   try {
     const file = input.files[0];
     if (!file) return;
-    // Track in memory ONLY - never touch sessionStorage for photos
     if (!taskStates[taskId]) taskStates[taskId] = {};
-    taskStates[taskId].photo = 'captured';
-    // Update UI
-    const area = document.getElementById('photo-area-' + taskId);
-    if (area) {
-      area.style.background = '#EAF4FD';
-      area.style.border = '1.5px solid #7BBDE1';
-      const icon = area.querySelector('.photo-area-icon');
-      const txt = area.querySelector('.photo-area-text');
-      if (icon) icon.textContent = '📷';
-      if (txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
-    }
-    // Reset input immediately to free memory
+
+    // Compress photo to ~800px wide JPEG before storing
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const maxW = 800;
+        const scale = Math.min(1, maxW / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL('image/jpeg', 0.6);
+        taskStates[taskId].photo = 'captured';
+        taskStates[taskId].photoData = compressed;
+        // Update UI
+        const area = document.getElementById('photo-area-' + taskId);
+        if (area) {
+          area.style.background = '#EAF4FD';
+          area.style.border = '1.5px solid #7BBDE1';
+          const icon = area.querySelector('.photo-area-icon');
+          const txt = area.querySelector('.photo-area-text');
+          if (icon) icon.textContent = '📷';
+          if (txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
+        }
+        showToast('✓ Photo captured', 'success');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
     input.value = '';
-    showToast('✓ Photo captured', 'success');
   } catch(err) {
     showToast('Try again', 'error');
   }
@@ -1033,7 +1050,7 @@ async function submitChecklist() {
     randomSoup: randomSelections.soup,
     dailyBOTS: getDailyBOTS().title,
     signature: signatures[currentChecklistId]||'',
-    tasks: allTasks.map(t=>({id:t.id,name:t.name,type:t.type,value:taskStates[t.id]?.value||'unanswered',temp:taskStates[t.id]?.temp||null,note:taskStates[t.id]?.note||'',hasPhoto:!!(taskStates[t.id]?.photo)}))
+    tasks: allTasks.map(t=>({id:t.id,name:t.name,type:t.type,value:taskStates[t.id]?.value||'unanswered',temp:taskStates[t.id]?.temp||null,note:taskStates[t.id]?.note||'',hasPhoto:!!(taskStates[t.id]?.photo),photoData:taskStates[t.id]?.photoData||null}))
   };
 
   try {
@@ -1041,6 +1058,7 @@ async function submitChecklist() {
       // Clean POST to Cloudflare Worker relay
       const leanPayload = { ...payload };
       delete leanPayload.signature;
+      // Keep photoData in tasks array for email attachments
       fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
