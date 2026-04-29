@@ -43,7 +43,17 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 .login-card h2 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 16px; text-align: center; }
 .form-group { margin-bottom: 12px; }
 .form-group label { display: block; font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
-.form-group input, .form-group select { width: 100%; padding: 11px 13px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--navy); background: var(--white); outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;
+  border: 1.5px solid #E2E6EC;
+  border-radius: 10px;
+  background: #fff;
+  color: #1B2C48;
+  box-sizing: border-box;
+}
+
 .form-group input:focus, .form-group select:focus { border-color: var(--blue); }
 .btn-primary { width: 100%; padding: 13px; background: var(--navy); color: var(--white); border: none; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px; transition: background 0.2s, transform 0.1s; }
 .btn-primary:active { transform: scale(0.98); }
@@ -213,7 +223,26 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 <body>
 
 <script>
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxrfKLVQcfosm1EmW3Gyi4sXbomAyki0HEUAH_WZNNLfPvnN-j-eycoAoIYTc0EqKoMNg/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzEtkNOCM_UZoT8TPzGrwR1ksd3_vjTcUXcyY2c5jaSz3Ie4zV6vwLuvu_GWETDCqB5fA/exec";
+
+// SessionStorage polyfill for iOS local file opening
+const _memStore = {};
+const _ss = (() => {
+  try { sessionStorage.setItem('_t','1'); sessionStorage.removeItem('_t'); return sessionStorage; }
+  catch(e) {
+    return {
+      getItem: k => _memStore[k] || null,
+      setItem: (k,v) => { _memStore[k] = String(v); },
+      removeItem: k => { delete _memStore[k]; },
+      key: i => Object.keys(_memStore)[i] || null,
+      get length() { return Object.keys(_memStore).length; },
+      clear: () => { Object.keys(_memStore).forEach(k => delete _memStore[k]); }
+    };
+  }
+})();
+
+// Override sessionStorage with our safe version
+Object.defineProperty(window, 'sessionStorage', { value: _ss, writable: false });
 
 const LOCATIONS = [
   "Ann Arbor","Brighton","East Lansing","Midland","Norton Shores",
@@ -222,15 +251,14 @@ const LOCATIONS = [
 ];
 
 const FRUIT_PIES = [
-  "Peninsula Apple Crumb","Grand Traverse Cherry Crumb","Lakeshore Berry Crumb",
-  "Michigan ABC Crumb","Old Mission Cherry","Mountain Berry Crumb",
-  "Strawberry Rhubarb Crumb","Front Street Apple","West Bay Blueberry Crumb",
-  "Suttons Bay Blueberry","Apple Crumb with Pecans and Caramel","ABC Crumb Top",
-  "Peach","Cherry Ganache","Peach Crumb","Strawberry Rhubarb",
-  "ABC (Apple, Blueberry and Cherry)","Gluten Free Apple","Cherry Apple Crumb",
-  "Raspberry Apple Crumb","Splenda Cherry","Blackberry Peach Crumb",
-  "Apple Mountain Top","Apple Dumpling","Apple Dumpling with Caramel",
-  "Raspberry","Blackberry","LTO Pie"
+  "Peninsula Apple Crumb","Grand Traverse Cherry Crumb","Old Mission Cherry",
+  "Michigan ABC Crumb","Front Street Apple","Mountain Berry Crumb",
+  "West Bay Blueberry Crumb","Lakeshore Berry Crumb","Strawberry Rhubarb Crumb",
+  "Suttons Bay Blueberry","Apple Crumb with Pecans and Caramel","Peach Crumb",
+  "ABC (Apple, Blueberry and Cherry)","Strawberry Rhubarb","ABC Crumb Top",
+  "LTO Pie","Chocolate Cream","Coconut Cream","Key Lime Pie","Banana Cream Pie",
+  "Chocolate Peanut Butter Cream","Blueberry Lemon Silk Pie","Pecan Pie",
+  "Lemon Meringue Pie","Oreo Cream Pie"
 ];
 
 const BAKED_GOODS = [
@@ -245,6 +273,14 @@ const BAKED_GOODS = [
 ];
 
 const SOUPS = ["Tomato Bisque","Broccoli Cheddar","Chicken Noodle","Soup of the Day"];
+
+const FOOD_ITEMS = [
+  "GT Chicken Salad Croissant","GT Grilled Cheese","Classic Turkey Sandwich",
+  "BLT","Grilled Lighthouse Turkey Cheddar","Grilled Reuben",
+  "Grilled Chicken Focaccia Sandwich","Grilled Turkey Reuben","GT Club",
+  "Mediterranean Veggie Sandwich","Full Cherry Chicken Salad",
+  "Full Hudson's Maurice Salad","Full Chicken Fiesta Salad"
+];
 
 const BOTS_ACTIONS = [
   { title:"Repeat Every Order Back", standard:"Before sending any order, read it back to the guest word-for-word. Confirm modifications, quantities, and for-here/to-go.", lookFor:["Reads back every item and modifier","Confirms quantity","Confirms dining option","Waits for guest confirmation before sending"] },
@@ -274,13 +310,25 @@ function getDailyBOTS() {
   return BOTS_ACTIONS[seed % BOTS_ACTIONS.length];
 }
 
-// Get daily random item seeded by date + type
+// Get daily random item seeded by date + type - same result for ALL locations each day
 function getDailyRandom(arr, type) {
   const today = new Date().toISOString().slice(0,10);
   let seed = 0;
   for (let c of today + type) seed += c.charCodeAt(0);
   return arr[seed % arr.length];
 }
+function getDailyPie() { return getDailyRandom(FRUIT_PIES, 'pie'); }
+function getTomorrowItem(arr, type) {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0,10);
+  let seed = 0;
+  for (let c of tomorrowStr + type) seed += c.charCodeAt(0);
+  return arr[seed % arr.length];
+}
+function getDailyBaked() { return getDailyRandom(BAKED_GOODS, 'baked'); }
+function getDailyFood() { return getDailyRandom(FOOD_ITEMS, 'food'); }
+function getDailySoup() { return getDailyRandom(SOUPS, 'soup'); }
 
 // Opening Check checklist definition
 const FOH_OPEN_CHECKLIST = {
@@ -342,10 +390,9 @@ const MIDDAY_CHECKLIST = {
       tasks: [
         { id:"mdf1", name:"Is pie display stocked and ready to go?", desc:"No handwritten tags, all pies meet quality standards, no less than 8 pies displayed, current LTO pie displayed", type:"yn-photo" },
         { id:"mdf2", name:"Are baked goods stocked and ready to go?", desc:"No handwritten tags, all baked goods meet quality standards. Required: Cookies (3 types), Muffins (3 types), Cinnamon Rolls, PB Cup, Goodie Bar, GF Pumpkin Bar", type:"yn-photo" },
-        { id:"mdf3", name:"RANDOM_PIE", desc:"Review pie for all quality identifiers. Take a picture.", type:"random-pie" },
-        { id:"mdf4", name:"RANDOM_BAKED", desc:"Review baked good for all quality identifiers. Take a picture.", type:"random-baked" },
+        { id:"mdf3", name:"RANDOM_FOOD", desc:"Review food item for all quality identifiers. Take a picture.", type:"random-food" },
         { id:"mdf5", name:"Is Grab & Go cooler and freezer well stocked?", desc:"Check all grab & go items are stocked and properly displayed", type:"yn-photo" },
-        { id:"mdf6", name:"RANDOM_SOUP", desc:"Check soup temperature. Take a photo of the thermometer reading.", type:"random-soup" },
+        { id:"mdf6", name:"Pot Pie Hot Holding Temperature", desc:"Must be 135°F or above. Take a photo of the thermometer.", type:"pot-pie-temp" },
         { id:"mdf7", name:"Sandwich Cooler Temperature", desc:"Log current temperature", type:"temp-cooler" },
         { id:"mdf8", name:"Salad Cooler Temperature", desc:"Log current temperature", type:"temp-cooler" },
         { id:"mdf9", name:"Walk-In Cooler Temperature", desc:"Log current temperature", type:"temp-cooler" },
@@ -490,12 +537,11 @@ function openChecklist(id) {
     sessionStorage.setItem(`gtpie_start_${getTodayKey()}_${id}`, checklistStartTime);
   }
   // Init random selections (persist for the day)
-  randomSelections.pie = sessionStorage.getItem(getRandKey(id,'pie')) || null;
-  randomSelections.baked = sessionStorage.getItem(getRandKey(id,'baked')) || null;
-  randomSelections.soup = sessionStorage.getItem(getRandKey(id,'soup')) || null;
-  if (!randomSelections.pie) { randomSelections.pie = FRUIT_PIES[Math.floor(Math.random()*FRUIT_PIES.length)]; sessionStorage.setItem(getRandKey(id,'pie'), randomSelections.pie); }
-  if (!randomSelections.baked) { randomSelections.baked = BAKED_GOODS[Math.floor(Math.random()*BAKED_GOODS.length)]; sessionStorage.setItem(getRandKey(id,'baked'), randomSelections.baked); }
-  if (!randomSelections.soup) { randomSelections.soup = SOUPS[Math.floor(Math.random()*SOUPS.length)]; sessionStorage.setItem(getRandKey(id,'soup'), randomSelections.soup); }
+  // Date-seeded selections - same for all locations each day
+  randomSelections.pie = getDailyPie();
+  randomSelections.baked = getDailyBaked();
+  randomSelections.food = getDailyFood();
+  randomSelections.soup = getDailySoup();
 
   const cl = id === 'midday' ? MIDDAY_CHECKLIST : FOH_OPEN_CHECKLIST;
   document.getElementById('cl-label').textContent = currentUser.location;
@@ -544,39 +590,58 @@ function renderTasks(cl) {
         const yActive = state.value==='yes'?'active':'';
         const nActive = state.value==='no'?'active':'';
         html += `<div class="task-top"><div class="task-text">
-          <div class="task-name">Quality Check: ${pie}</div>
-          <div class="task-desc">Review <strong>${pie}</strong> for all quality identifiers. Take a picture.</div>
+          <div class="task-name">Pie Quality Check: ${pie}</div>
+          <div class="task-desc">Are you happy with this pie? Take a picture.</div>
         </div></div>
         <div class="yn-toggle">
           <button class="yn-btn yes-btn ${yActive}" data-task="${task.id}" data-val="yes" onclick="setYN(this.dataset.task, this.dataset.val)">YES</button>
           <button class="yn-btn no-btn ${nActive}" data-task="${task.id}" data-val="no" onclick="setYN(this.dataset.task, this.dataset.val)">NO</button>
         </div>
-        ${state.value==='no'?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Describe the issue and what action was taken..." data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
+        ${state.value==='no'?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Why didn't you like this pie and how are you going to correct the defect?" data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
         <label class="photo-area ${state.photo?'has-photo':''}" id="photo-area-${task.id}" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;border-radius:8px;border:1.5px dashed #E2E6EC;background:#F0F2F5;margin-top:8px;">
           <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="handlePhoto(\'${task.id}\',this)">
           <div class="photo-area-icon">${state.photo?'📷':'📸'}</div>
           <div class="photo-area-text"><strong>${state.photo?'Photo captured':'Tap to take photo'}</strong><span>${state.photo?'Tap to retake':'Required'}</span></div>
         </label>
-        <button class="reroll-btn" onclick="rerollPie()">🎲 We don't have this pie — pick another</button>`;
+        
+        <div style="margin-top:8px;padding:10px 12px;background:#1B2C48;border-radius:8px"><div style="font-size:10px;color:#7BBDE1;text-transform:uppercase;margin-bottom:3px">Tomorrow's Pie Check</div><div style="font-size:13px;color:#FFFFFF;font-weight:600">${getTomorrowItem(FRUIT_PIES,'pie')}</div></div>`;
       } else if (task.type==='random-baked') {
         const baked = randomSelections.baked || BAKED_GOODS[0];
         const yActive = state.value==='yes'?'active':'';
         const nActive = state.value==='no'?'active':'';
         html += `<div class="task-top"><div class="task-text">
-          <div class="task-name">Quality Check: ${baked}</div>
-          <div class="task-desc">Review <strong>${baked}</strong> for all quality identifiers. Take a picture.</div>
+          <div class="task-name">Bakery Quality Check: ${baked}</div>
+          <div class="task-desc">Are you happy with this bakery item? Take a picture.</div>
         </div></div>
         <div class="yn-toggle">
           <button class="yn-btn yes-btn ${yActive}" data-task="${task.id}" data-val="yes" onclick="setYN(this.dataset.task, this.dataset.val)">YES</button>
           <button class="yn-btn no-btn ${nActive}" data-task="${task.id}" data-val="no" onclick="setYN(this.dataset.task, this.dataset.val)">NO</button>
         </div>
-        ${state.value==='no'?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Describe the issue and what action was taken..." data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
+        ${state.value==='no'?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Why didn't you like this bakery item and how are you going to correct the defect?" data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
         <label class="photo-area ${state.photo?'has-photo':''}" id="photo-area-${task.id}" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;border-radius:8px;border:1.5px dashed #E2E6EC;background:#F0F2F5;margin-top:8px;">
           <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="handlePhoto(\'${task.id}\',this)">
           <div class="photo-area-icon">${state.photo?'📷':'📸'}</div>
           <div class="photo-area-text"><strong>${state.photo?'Photo captured':'Tap to take photo'}</strong><span>${state.photo?'Tap to retake':'Required'}</span></div>
         </label>
-        <button class="reroll-btn" onclick="rerollBaked()">🎲 We don't have this item — pick another</button>`;
+        
+        <div style="margin-top:8px;padding:10px 12px;background:#1B2C48;border-radius:8px"><div style="font-size:10px;color:#7BBDE1;text-transform:uppercase;margin-bottom:3px">Tomorrow's Bakery Check</div><div style="font-size:13px;color:#FFFFFF;font-weight:600">${getTomorrowItem(BAKED_GOODS,'baked')}</div></div>`;
+      } else if (task.type==='pot-pie-temp') {
+        html += `<div class="task-top"><div class="task-text">
+          <div class="task-name">Pot Pie Hot Holding Temp</div>
+          <div class="task-desc">Must be 135°F or above. Take a photo of the thermometer.</div>
+        </div></div>
+        <div class="temp-input-wrap">
+          <div class="temp-row">
+            <input class="temp-input" id="temp-${task.id}" type="number" placeholder="---" value="${state.temp||''}" data-task="${task.id}" oninput="evalSoupTemp(this.dataset.task, this.value)">
+            <span class="temp-unit">°F</span>
+          </div>
+          <div class="temp-flag" id="flag-${task.id}">${state.temp ? buildSoupFlag(state.temp, task.id, false) : ''}</div>
+        </div>
+        <label class="photo-area ${state.photo?'has-photo':''}" id="photo-area-${task.id}" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;border-radius:8px;border:1.5px dashed #E2E6EC;background:#F0F2F5;margin-top:8px;">
+          <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="handlePhoto('${task.id}',this)">
+          <div class="photo-area-icon">${state.photo?'📷':'📸'}</div>
+          <div class="photo-area-text"><strong>${state.photo?'Photo captured ✓':'Tap to take photo'}</strong><span>${state.photo?'Retake':'Required'}</span></div>
+        </label>`;
       } else if (task.type==='random-soup') {
         const soup = randomSelections.soup || SOUPS[0];
         const isSotd = soup==='Soup of the Day';
@@ -600,6 +665,24 @@ function renderTasks(cl) {
           <div id="thumb-${task.id}" style="width:36px;height:36px;border-radius:8px;background:transparent;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;flex-shrink:0;margin-left:auto;"></div></div>
         ${state.value==='no'||state.temp<135&&state.temp?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Action taken: reheat, discard, notify manager..." data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
 `;
+      } else if (task.type==='random-food') {
+        const food = randomSelections.food || getDailyFood();
+        const yActive = state.value==='yes'?'active':'';
+        const nActive = state.value==='no'?'active':'';
+        html += `<div class="task-top"><div class="task-text">
+          <div class="task-name">Food Quality Check: ${food}</div>
+          <div class="task-desc">Are you happy with this product? Take a picture.</div>
+        </div></div>
+        <div class="yn-toggle">
+          <button class="yn-btn yes-btn ${yActive}" data-task="${task.id}" data-val="yes" onclick="setYN(this.dataset.task,this.dataset.val)">YES</button>
+          <button class="yn-btn no-btn ${nActive}" data-task="${task.id}" data-val="no" onclick="setYN(this.dataset.task,this.dataset.val)">NO</button>
+        </div>
+        ${state.value==='no'?`<div class="corrective-box"><div class="corrective-label">⚠ Corrective Action Required</div><textarea placeholder="Why didn't you like this product and how are you going to correct the defect?" data-task="${task.id}" onchange="saveNote(this.dataset.task,this.value)">${state.note||''}</textarea></div>`:''}
+        <label class="photo-area ${state.photo?'has-photo':''}" id="photo-area-${task.id}" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;border-radius:8px;border:1.5px dashed #E2E6EC;background:#F0F2F5;margin-top:8px;">
+          <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="handlePhoto('${task.id}',this)">
+          <div class="photo-area-icon">${state.photo?'📷':'📸'}</div>
+          <div class="photo-area-text"><strong>${state.photo?'Photo captured ✓':'Tap to take photo'}</strong><span>${state.photo?'Retake':'Required'}</span></div>
+        </label>`;
       } else if (task.type==='temp-cooler' || task.type==='temp-freezer') {
         const isFreezer = task.type==='temp-freezer';
         html += `<div class="task-top"><div class="task-text">
@@ -935,6 +1018,7 @@ async function submitChecklist() {
     tasksAnswered: answered,
     tasksTotal: allTasks.length,
     randomPie: randomSelections.pie,
+    randomFood: randomSelections.food,
     randomBaked: randomSelections.baked,
     randomSoup: randomSelections.soup,
     dailyBOTS: getDailyBOTS().title,
@@ -943,8 +1027,15 @@ async function submitChecklist() {
   };
 
   try {
-    if (WEBHOOK_URL && WEBHOOK_URL!=='https://script.google.com/macros/s/AKfycbxrfKLVQcfosm1EmW3Gyi4sXbomAyki0HEUAH_WZNNLfPvnN-j-eycoAoIYTc0EqKoMNg/exec') {
-      await fetch(WEBHOOK_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if (WEBHOOK_URL && WEBHOOK_URL!=='https://script.google.com/macros/s/AKfycbzEtkNOCM_UZoT8TPzGrwR1ksd3_vjTcUXcyY2c5jaSz3Ie4zV6vwLuvu_GWETDCqB5fA/exec') {
+      // POST without signature to keep payload lean
+      const leanPayload = { ...payload };
+      delete leanPayload.signature;
+      fetch(WEBHOOK_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify(leanPayload)
+      }).catch(() => {});
     }
     markCompleted(currentChecklistId);
     saveProgress(currentChecklistId, taskStates);
@@ -1015,7 +1106,7 @@ function showToast(msg,type='') {
     <h2>Sign In to Start</h2>
     <div class="form-group"><label>First Name</label><input type="text" id="first-name" placeholder="Your first name" autocomplete="given-name"></div>
     <div class="form-group"><label>Last Name</label><input type="text" id="last-name" placeholder="Your last name" autocomplete="family-name"></div>
-    <div class="form-group"><label>Location</label><select id="location-select"><option value="">Select your location...</option></select></div>
+    <div class="form-group"><label>Location</label><select id="location-select"><option value="">Select your location...</option><option value="Ann Arbor">Ann Arbor</option><option value="Brighton">Brighton</option><option value="East Lansing">East Lansing</option><option value="Midland">Midland</option><option value="Norton Shores">Norton Shores</option><option value="Okemos">Okemos</option><option value="Plymouth">Plymouth</option><option value="Portage">Portage</option><option value="Terre Haute, IN">Terre Haute, IN</option><option value="Traverse City – Front St">Traverse City – Front St</option><option value="Traverse City – Park St">Traverse City – Park St</option></select></div>
     <button class="btn-primary" onclick="handleLogin()">Start Checklists →</button>
   </div>
 </div>
