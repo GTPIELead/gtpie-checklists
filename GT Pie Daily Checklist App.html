@@ -815,7 +815,17 @@ function updateCorrectiveBox(taskId, show) {
     label.className = 'corrective-label';
     label.textContent = '⚠ Corrective Action Required';
     const ta = document.createElement('textarea');
-    ta.placeholder = 'Action taken: notify manager, check product...';
+    // Use task-specific placeholder
+    const taskType = card.dataset.taskType || '';
+    if (taskType === 'random-pie') {
+      ta.placeholder = "Why didn't you like this pie and how are you going to correct the defect?";
+    } else if (taskType === 'random-baked') {
+      ta.placeholder = "Why didn't you like this bakery item and how are you going to correct the defect?";
+    } else if (taskType === 'random-food') {
+      ta.placeholder = "Why didn't you like this product and how are you going to correct the defect?";
+    } else {
+      ta.placeholder = 'Describe the issue and action taken...';
+    }
     ta.value = (taskStates[taskId] && taskStates[taskId].note) || '';
     ta.onchange = function() { saveNote(taskId, this.value); };
     box.appendChild(label);
@@ -1028,14 +1038,15 @@ async function submitChecklist() {
 
   try {
     if (WEBHOOK_URL && WEBHOOK_URL!=='https://script.google.com/macros/s/AKfycbzEtkNOCM_UZoT8TPzGrwR1ksd3_vjTcUXcyY2c5jaSz3Ie4zV6vwLuvu_GWETDCqB5fA/exec') {
-      // POST without signature to keep payload lean
+      // Submit via hidden iframe GET - works with Google Apps Script
       const leanPayload = { ...payload };
       delete leanPayload.signature;
-      fetch(WEBHOOK_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify(leanPayload)
-      }).catch(() => {});
+      const encoded = encodeURIComponent(JSON.stringify(leanPayload));
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = WEBHOOK_URL + '?payload=' + encoded;
+      document.body.appendChild(iframe);
+      setTimeout(() => { try { document.body.removeChild(iframe); } catch(e) {} }, 5000);
     }
     markCompleted(currentChecklistId);
     saveProgress(currentChecklistId, taskStates);
