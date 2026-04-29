@@ -223,7 +223,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 <body>
 
 <script>
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzEtkNOCM_UZoT8TPzGrwR1ksd3_vjTcUXcyY2c5jaSz3Ie4zV6vwLuvu_GWETDCqB5fA/exec";
+const WEBHOOK_URL = "https://gtpie-checklist-relay.crimson-mud-b8bc.workers.dev";
 
 // SessionStorage polyfill for iOS local file opening
 const _memStore = {};
@@ -1037,16 +1037,15 @@ async function submitChecklist() {
   };
 
   try {
-    if (WEBHOOK_URL && WEBHOOK_URL!=='https://script.google.com/macros/s/AKfycbzEtkNOCM_UZoT8TPzGrwR1ksd3_vjTcUXcyY2c5jaSz3Ie4zV6vwLuvu_GWETDCqB5fA/exec') {
-      // Submit via hidden iframe GET - works with Google Apps Script
+    if (WEBHOOK_URL && WEBHOOK_URL!=='https://gtpie-checklist-relay.crimson-mud-b8bc.workers.dev') {
+      // Clean POST to Cloudflare Worker relay
       const leanPayload = { ...payload };
       delete leanPayload.signature;
-      const encoded = encodeURIComponent(JSON.stringify(leanPayload));
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = WEBHOOK_URL + '?payload=' + encoded;
-      document.body.appendChild(iframe);
-      setTimeout(() => { try { document.body.removeChild(iframe); } catch(e) {} }, 5000);
+      fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(leanPayload)
+      }).catch(() => {});
     }
     markCompleted(currentChecklistId);
     saveProgress(currentChecklistId, taskStates);
