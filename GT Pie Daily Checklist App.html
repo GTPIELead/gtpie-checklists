@@ -424,30 +424,36 @@ let sigCanvas, sigCtx, sigDrawing = false;
 let randomSelections = {};
 
 function getTodayKey() { return new Date().toISOString().slice(0,10); }
-function getCompletedKey(id) { return `gtpie_done_${getTodayKey()}_${id}`; }
-function markCompleted(id) { sessionStorage.setItem(getCompletedKey(id), 'true'); }
-function isCompleted(id) { return sessionStorage.getItem(getCompletedKey(id)) === 'true'; }
-function getProgressKey(id) { return `gtpie_prog_${getTodayKey()}_${id}`; }
+function getCompletedKey(id) { const loc = (currentUser&&currentUser.location||'unknown').replace(/[^a-z0-9]/gi,'_'); return `gtpie_done_${getTodayKey()}_${loc}_${id}`; }
+function markCompleted(id) {
+  // Use localStorage so completion persists across browser sessions for the day
+  try { localStorage.setItem(getCompletedKey(id), 'true'); } catch(e) {}
+  try { sessionStorage.setItem(getCompletedKey(id), 'true'); } catch(e) {}
+}
+function isCompleted(id) {
+  // Check localStorage first, fall back to sessionStorage
+  try { if (localStorage.getItem(getCompletedKey(id)) === 'true') return true; } catch(e) {}
+  try { return sessionStorage.getItem(getCompletedKey(id)) === 'true'; } catch(e) {}
+  return false;
+}
+function getProgressKey(id) { const loc = (currentUser&&currentUser.location||'unknown').replace(/[^a-z0-9]/gi,'_'); return `gtpie_prog_${getTodayKey()}_${loc}_${id}`; }
 function saveProgress(id, states) {
-  // Strip photo flags before saving to avoid storage bloat
   const clean = {};
   Object.keys(states).forEach(k => {
     clean[k] = { ...states[k] };
     delete clean[k].photo;
+    delete clean[k].photoData;
   });
-  try {
-    sessionStorage.setItem(getProgressKey(id), JSON.stringify(clean));
-  } catch(e) {
-    // Storage full - clear old keys and retry
-    const today = getTodayKey();
-    for (let i = sessionStorage.length - 1; i >= 0; i--) {
-      const key = sessionStorage.key(i);
-      if (key && !key.includes(today)) sessionStorage.removeItem(key);
-    }
-    try { sessionStorage.setItem(getProgressKey(id), JSON.stringify(clean)); } catch(e2) {}
-  }
+  const key = getProgressKey(id);
+  const val = JSON.stringify(clean);
+  try { localStorage.setItem(key, val); } catch(e) {}
+  try { sessionStorage.setItem(key, val); } catch(e) {}
 }
-function loadProgress(id) { try { return JSON.parse(sessionStorage.getItem(getProgressKey(id))) || {}; } catch { return {}; } }
+function loadProgress(id) {
+  try { const ls = localStorage.getItem(getProgressKey(id)); if (ls) return JSON.parse(ls); } catch(e) {}
+  try { const ss = sessionStorage.getItem(getProgressKey(id)); if (ss) return JSON.parse(ss); } catch(e) {}
+  return {};
+}
 function getRandKey(id, type) { return `gtpie_rand_${getTodayKey()}_${id}_${type}`; }
 
 function formatTime(ts) {
