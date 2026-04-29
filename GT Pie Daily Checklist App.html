@@ -1037,7 +1037,7 @@ async function submitChecklist() {
   };
 
   try {
-    if (WEBHOOK_URL && WEBHOOK_URL!=='https://gtpie-checklist-relay.crimson-mud-b8bc.workers.dev') {
+    if (WEBHOOK_URL) {
       // Clean POST to Cloudflare Worker relay
       const leanPayload = { ...payload };
       delete leanPayload.signature;
