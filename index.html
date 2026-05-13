@@ -422,6 +422,7 @@ let signatures = {};
 let checklistStartTime = null;
 let sigCanvas, sigCtx, sigDrawing = false;
 let randomSelections = {};
+let lateReasons = {};
 
 function getTodayKey() { return new Date().toISOString().slice(0,10); }
 function getCompletedKey(id) { const loc = (currentUser&&currentUser.location||'unknown').replace(/[^a-z0-9]/gi,'_'); return `gtpie_done_${getTodayKey()}_${loc}_${id}`; }
@@ -510,9 +511,24 @@ function showDashboard() {
   document.getElementById('dash-name').textContent = currentUser.firstName;
   document.getElementById('dash-location').textContent = currentUser.location;
   const hr = new Date().getHours();
+  const min = new Date().getMinutes();
+  const timeDecimal = hr + min/60;
   document.querySelector('.dash-user span').textContent = hr<12?'Good morning,':hr<17?'Good afternoon,':'Good evening,';
   updateDashboardCards();
   showScreen('dashboard');
+  // Show late alert if checklists are overdue
+  const alertEl = document.getElementById('late-alert');
+  const openingDone = isCompleted('foh-open');
+  const middayDone = isCompleted('midday');
+  const messages = [];
+  if (!openingDone && timeDecimal >= 9) messages.push('Opening Check is past due — should be completed by 9:00 AM');
+  if (!middayDone && timeDecimal >= 15) messages.push('Midday Check is past due — should be completed by 3:00 PM');
+  if (messages.length > 0) {
+    alertEl.textContent = '⚠ ' + messages.join(' · ');
+    alertEl.style.display = 'block';
+  } else {
+    alertEl.style.display = 'none';
+  }
 }
 
 function getAllTasks(cl) {
@@ -545,7 +561,47 @@ function updateDashboardCards() {
   document.getElementById('dash-plabel').textContent = `${completedCount} of 2 complete`;
 }
 
+function showLateReasonModal(id, dueTime) {
+  const overlay = document.createElement('div');
+  overlay.id = 'late-reason-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+      <div style="background:#E74C3C;border-radius:8px;padding:10px 14px;margin-bottom:16px;">
+        <div style="color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Past Due</div>
+        <div style="color:#fff;font-size:14px;margin-top:2px;">This checklist was due by ${dueTime}</div>
+      </div>
+      <div style="font-size:14px;font-weight:500;color:#1B2C48;margin-bottom:8px;">Why wasn't it completed on time?</div>
+      <textarea id="late-reason-input" placeholder="Explain the reason this checklist was not completed by ${dueTime}..." style="width:100%;min-height:100px;padding:10px 12px;border:1.5px solid #E2E6EC;border-radius:10px;font-size:14px;font-family:inherit;resize:none;box-sizing:border-box;"></textarea>
+      <button onclick="submitLateReason('${id}')" style="width:100%;margin-top:12px;padding:13px;background:#1B2C48;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;">Continue to Checklist</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function submitLateReason(id) {
+  const reason = document.getElementById('late-reason-input').value.trim();
+  if (!reason) {
+    document.getElementById('late-reason-input').style.border = '1.5px solid #E74C3C';
+    return;
+  }
+  lateReasons[id] = reason;
+  const overlay = document.getElementById('late-reason-overlay');
+  if (overlay) overlay.remove();
+  openChecklist(id);
+}
+
 function openChecklist(id) {
+  // Check if this checklist is past due and no reason given yet
+  const now = new Date();
+  const hr = now.getHours();
+  const min = now.getMinutes();
+  const timeDecimal = hr + min/60;
+  const isOpeningLate = id === 'foh-open' && timeDecimal >= 9 && !isCompleted(id);
+  const isMiddayLate = id === 'midday' && timeDecimal >= 15 && !isCompleted(id);
+  if ((isOpeningLate || isMiddayLate) && !lateReasons[id]) {
+    showLateReasonModal(id, isOpeningLate ? '9:00 AM' : '3:00 PM');
+    return;
+  }
   currentChecklistId = id;
   taskStates = loadProgress(id);
   checklistStartTime = sessionStorage.getItem(`gtpie_start_${getTodayKey()}_${id}`) || null;
@@ -763,10 +819,12 @@ function renderTasks(cl) {
 function buildCoolerFlagHTML(temp) {
   temp = parseFloat(temp);
   if (isNaN(temp)) return '';
-  if (temp <= 40) return '<div style="padding:8px 10px;border-radius:8px;background:#EAFAF1;color:#1a8a4a;font-weight:700;font-size:13px;margin-top:6px;">🟢 Good — holding at proper temp</div>';
-  if (temp <= 45) return '<div style="padding:8px 10px;border-radius:8px;background:#FEF9EC;color:#9a6500;font-weight:700;font-size:13px;margin-top:6px;">🟡 Attention — Notify manager immediately</div>';
-  return '<div style="padding:8px 10px;border-radius:8px;background:#FDEDEC;color:#E74C3C;font-weight:700;font-size:13px;margin-top:6px;">🔴 DANGER — Do not use. Remove product. Notify manager NOW.</div>';
+  if (temp < 30) return '<div style="padding:8px 10px;border-radius:8px;background:#FDEDEC;color:#E74C3C;font-weight:700;font-size:13px;margin-top:6px;">[ALERT] Too cold — below 30F, risk of freezing product. Check immediately.</div>';
+  if (temp <= 40) return '<div style="padding:8px 10px;border-radius:8px;background:#EAFAF1;color:#1a8a4a;font-weight:700;font-size:13px;margin-top:6px;">[OK] Good — ideal cooler temp (30-40F)</div>';
+  if (temp <= 45) return '<div style="padding:8px 10px;border-radius:8px;background:#FEF9EC;color:#9a6500;font-weight:700;font-size:13px;margin-top:6px;">[WARN] Attention — temp too warm, notify manager immediately</div>';
+  return '<div style="padding:8px 10px;border-radius:8px;background:#FDEDEC;color:#E74C3C;font-weight:700;font-size:13px;margin-top:6px;">[ALERT] DANGER — Do not use. Remove product. Notify manager NOW.</div>';
 }
+
 function buildFreezerFlagHTML(temp) {
   temp = parseFloat(temp);
   if (isNaN(temp)) return '';
@@ -778,7 +836,8 @@ function buildSoupFlag(temp, taskId, returnHTML) {
   temp = parseFloat(temp);
   if (isNaN(temp)) return '';
   let html = '';
-  if (temp >= 135) html = '<span style="color:#1a8a4a;font-weight:700;">🟢 Good — holding at proper temp</span>';
+  if (temp > 145) html = '<span style="color:#E74C3C;font-weight:700;">🔴 Too hot — product may be overcooking. Reduce heat and notify manager.</span>';
+  else if (temp >= 135) html = '<span style="color:#1a8a4a;font-weight:700;">🟢 Good — holding at proper temp (135–145°F)</span>';
   else if (temp >= 120) html = '<span style="color:#9a6500;font-weight:700;">🟡 Attention — Reheat immediately. Notify manager.</span>';
   else html = '<span style="color:#E74C3C;font-weight:700;">🔴 DANGER — Do not serve. Remove from line. Notify manager NOW.</span>';
   if (returnHTML) return html;
@@ -793,7 +852,7 @@ function evalCoolerTemp(taskId, val) {
     el.style.display = 'block';
     el.innerHTML = buildCoolerFlagHTML(temp);
   }
-  const alert = !isNaN(temp) && temp > 40;
+  const alert = !isNaN(temp) && (temp > 40 || temp < 32);
   taskStates[taskId] = { ...(taskStates[taskId]||{}), temp:val, value:'temp', tempAlert:alert };
   saveProgress(currentChecklistId, taskStates);
   updateCorrectiveBox(taskId, alert);
@@ -1067,6 +1126,7 @@ async function submitChecklist() {
     randomSoup: randomSelections.soup,
     dailyBOTS: getDailyBOTS().title,
     signature: signatures[currentChecklistId]||'',
+    lateReason: lateReasons[currentChecklistId]||null,
     tasks: allTasks.map(t=>({id:t.id,name:t.name,type:t.type,value:taskStates[t.id]?.value||'unanswered',temp:taskStates[t.id]?.temp||null,note:taskStates[t.id]?.note||'',hasPhoto:!!(taskStates[t.id]?.photo),photoData:taskStates[t.id]?.photoData||null}))
   };
 
@@ -1158,6 +1218,7 @@ function showToast(msg,type='') {
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="screen">
+  <div id="late-alert" style="display:none;background:#E74C3C;color:#fff;padding:10px 16px;font-size:13px;font-weight:500;text-align:center;animation:flashAlert 1s ease-in-out 3;"></div>
   <div class="dash-header">
     <div class="dash-header-top">
       <div class="dash-user"><span>Good morning,</span><strong id="dash-name">—</strong></div>
