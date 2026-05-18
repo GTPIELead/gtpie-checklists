@@ -219,11 +219,39 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 
 .config-banner { background: #FFF3CD; border: 1px solid #FFEAA7; border-radius: var(--radius-sm); padding: 9px 12px; font-size: 12px; color: #856404; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 </style>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { getStorage, ref, uploadString, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+    import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDzlwbbZoYDFDHjUe00e6q5eEOASJ0SM9E",
+      authDomain: "gtpie-checklists.firebaseapp.com",
+      projectId: "gtpie-checklists",
+      storageBucket: "gtpie-checklists.firebasestorage.app",
+      messagingSenderId: "239795446845",
+      appId: "1:239795446845:web:4679630763d9f0ab9af654",
+      measurementId: "G-VNDRP8VW3N"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const auth = getAuth(app);
+
+    // Sign in anonymously so we can write to Firestore
+    signInAnonymously(auth).catch(err => console.error('Firebase auth error:', err));
+
+    // Make available globally
+    window._firebase = { db, storage, auth, collection, addDoc, serverTimestamp, ref, uploadString, getDownloadURL };
+  </script>
 </head>
 <body>
 
 <script>
-const WEBHOOK_URL = "https://gtpie-checklist-relay.crimson-mud-b8bc.workers.dev";
+// Firebase is initialized via module script in <head>
 
 // SessionStorage polyfill for iOS local file opening
 const _memStore = {};
@@ -1131,16 +1159,40 @@ async function submitChecklist() {
   };
 
   try {
-    if (WEBHOOK_URL) {
-      // Clean POST to Cloudflare Worker relay
-      const leanPayload = { ...payload };
-      delete leanPayload.signature;
-      // Keep photoData in tasks array for email attachments
-      fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(leanPayload)
-      }).catch(() => {});
+    // Save to Firebase
+    try {
+      const firebase = window._firebase;
+      if (firebase) {
+        const leanPayload = { ...payload };
+        delete leanPayload.signature;
+
+        // Upload photos to Firebase Storage and replace with URLs
+        const tasksWithPhotoUrls = await Promise.all(leanPayload.tasks.map(async (t) => {
+          if (t.photoData) {
+            try {
+              const photoRef = firebase.ref(firebase.storage, `photos/${payload.location}/${payload.timestamp}/${t.id}.jpg`);
+              await firebase.uploadString(photoRef, t.photoData, 'data_url');
+              const url = await firebase.getDownloadURL(photoRef);
+              return { ...t, photoUrl: url, photoData: null };
+            } catch(e) {
+              return { ...t, photoData: null };
+            }
+          }
+          return t;
+        }));
+
+        leanPayload.tasks = tasksWithPhotoUrls;
+        leanPayload.createdAt = firebase.serverTimestamp();
+
+        // Save to Firestore
+        await firebase.addDoc(
+          firebase.collection(firebase.db, 'checklists'),
+          leanPayload
+        );
+        showToast('Saved to Firebase', 'success');
+      }
+    } catch(err) {
+      console.error('Firebase save error:', err);
     }
     markCompleted(currentChecklistId);
     saveProgress(currentChecklistId, taskStates);
