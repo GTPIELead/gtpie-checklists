@@ -13,11 +13,10 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -35,7 +34,6 @@ export default async function handler(req, res) {
     const submissions = [];
     snapshot.forEach(doc => {
       const data = doc.data();
-      // Convert Firestore Timestamps to ISO strings
       if (data.createdAt && data.createdAt.toDate) {
         data.createdAt = data.createdAt.toDate().toISOString();
       }
@@ -47,4 +45,4 @@ export default async function handler(req, res) {
     console.error('Dashboard error:', err.message);
     return res.status(500).json({ error: err.message });
   }
-}
+};
