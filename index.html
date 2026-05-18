@@ -295,14 +295,10 @@ const FRUIT_PIES = [
 ];
 
 const BAKED_GOODS = [
-  "Cherry Oatmeal Cookie","Chocolate Chip Cookie","Frosted Sugar Cookie",
-  "Gluten Free Cowboy Cookie","Peanut Butter Cookie","Sugar Cookie",
-  "Cherry Pecan Muffin","Blueberry Muffin","Raspberry Muffin","Pumpkin Muffin",
-  "Pumpkin Cream Cheese Muffin","Banana Nut Muffin","Chocolate Muffin",
-  "Pecan Rolls","Cinnamon Rolls","Peanut Butter Cups","Rice Krispie Treats",
-  "Brownie with Frosting Bar","Apple Dumpling","Goody Bar","Pumpkin Bar, GF",
-  "Chocolate PB Bar","Gluten Free Cream Cheese Brownie Bar","Fruit Bar",
-  "Lemon Bar","Pumpkin Bread","Pumpkin Bread Slice","Banana Nut Bread"
+  "Cinnamon Roll","Peanut Butter Cups","Apple Dumpling","Goody Bar",
+  "Pumpkin Bar, GF","Chocolate Chip Cookie","Peanut Butter Cookie",
+  "Frosted Sugar Cookie","Cherry Pecan Muffin","Blueberry Muffin",
+  "Pumpkin Cream Cheese Muffin"
 ];
 
 const SOUPS = ["Tomato Bisque","Bowl Tomato Bisque","Broccoli Cheddar","Chicken Noodle","Soup of the Day"];
@@ -312,7 +308,7 @@ const FOOD_ITEMS = [
   "BLT","Grilled Lighthouse Turkey Cheddar","Grilled Reuben",
   "Grilled Chicken Focaccia Sandwich","Grilled Turkey Reuben","GT Club",
   "Mediterranean Veggie Sandwich","Full Cherry Chicken Salad",
-  "Full Hudson's Maurice Salad","Full Chicken Fiesta Salad","Full Strawberry Fields Salad"
+  "Full Hudson's Maurice Salad","Full Chicken Fiesta Salad","Full Strawberry Fields Salad","Bowl Tomato Basil Bisque"
 ];
 
 const BOTS_ACTIONS = [
@@ -1377,12 +1373,12 @@ function renderDashboard(submissions) {
 
   const locationData = {};
   LOCATIONS.forEach(loc => {
-    locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: 0 };
+    locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: [], correctiveActions: [], photosMissing: [] };
   });
 
   submissions.forEach(data => {
     const loc = data.location;
-    if (!locationData[loc]) locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: 0 };
+    if (!locationData[loc]) locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: [], correctiveActions: [], photosMissing: [] };
     const isOpening = (data.checklist||'').toLowerCase().includes('opening');
     const isMidday = (data.checklist||'').toLowerCase().includes('midday');
     const startTime = data.startTime ? new Date(data.startTime) : null;
@@ -1391,18 +1387,35 @@ function renderDashboard(submissions) {
       const h = startTime.getHours() + startTime.getMinutes()/60;
       onTime = (isOpening && h <= 9) || (isMidday && h <= 15);
     }
-    const sub = { employee: data.employee, time: data.timestamp ? new Date(data.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '--', onTime, lateReason: data.lateReason };
+
+    // Count photos required vs taken
+    const tasks = data.tasks || [];
+    const photoRequired = tasks.filter(t => t.hasPhoto !== undefined || t.photoUrl || ['random-pie','random-baked','random-food','random-soup','pot-pie-temp','yn-photo'].includes(t.type));
+    const photosTaken = tasks.filter(t => t.photoUrl || t.hasPhoto).length;
+    const photosNeeded = photoRequired.length;
+
+    const sub = {
+      employee: data.employee,
+      time: data.timestamp ? new Date(data.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '--',
+      onTime,
+      lateReason: data.lateReason,
+      photosTaken,
+      photosNeeded
+    };
     if (isOpening) locationData[loc].opening = sub;
     if (isMidday) locationData[loc].midday = sub;
-    (data.tasks||[]).forEach(t => {
+
+    tasks.forEach(t => {
       if (t.tempAlert) locationData[loc].tempFlags++;
-      if (t.value === 'no' && t.note) locationData[loc].noAnswers++;
+      if (t.value === 'no' && t.note) {
+        locationData[loc].correctiveActions.push({ task: t.name, note: t.note, checklist: isOpening ? 'Opening' : 'Midday' });
+      }
     });
   });
 
   // Summary
   const completeBoth = LOCATIONS.filter(l => locationData[l].opening && locationData[l].midday).length;
-  const totalFlags = Object.values(locationData).reduce((s,l) => s + l.tempFlags + l.noAnswers, 0);
+  const totalFlags = Object.values(locationData).reduce((s,l) => s + l.tempFlags + l.correctiveActions.length, 0);
   document.getElementById('mgr-complete-count').textContent = completeBoth + '/11';
   document.getElementById('mgr-complete-count').style.color = completeBoth === 11 ? '#4ECB8D' : completeBoth >= 8 ? '#F9C74F' : '#E74C3C';
   document.getElementById('mgr-flags-count').textContent = totalFlags;
@@ -1412,25 +1425,47 @@ function renderDashboard(submissions) {
   const container = document.getElementById('mgr-locations');
   container.innerHTML = LOCATIONS.map(loc => {
     const d = locationData[loc];
-    const openPill = d.opening
-      ? `<span class="mgr-check-pill ${d.opening.onTime ? 'mgr-check-done' : 'mgr-check-late'}">${d.opening.onTime ? 'Opening ✓' : 'Opening - Late'}</span>`
-      : '<span class="mgr-check-pill mgr-check-missing">Opening Missing</span>';
-    const midPill = d.midday
-      ? `<span class="mgr-check-pill ${d.midday.onTime ? 'mgr-check-done' : 'mgr-check-late'}">${d.midday.onTime ? 'Midday ✓' : 'Midday - Late'}</span>`
-      : '<span class="mgr-check-pill mgr-check-missing">Midday Missing</span>';
-    const openInfo = d.opening ? `<div style="font-size:10px;color:#7BBDE1;margin-top:3px;">${d.opening.employee} · ${d.opening.time}</div>` : '';
-    const midInfo = d.midday ? `<div style="font-size:10px;color:#7BBDE1;margin-top:3px;">${d.midday.employee} · ${d.midday.time}</div>` : '';
-    const flags = (d.tempFlags + d.noAnswers) > 0 ? `<div style="font-size:11px;color:#E74C3C;font-weight:700;margin-top:6px;">⚠ ${d.tempFlags} temp flag${d.tempFlags!==1?'s':''} · ${d.noAnswers} corrective action${d.noAnswers!==1?'s':''}</div>` : '';
-    const lateReason = (d.opening?.lateReason || d.midday?.lateReason) ? `<div style="font-size:10px;color:#9a6500;margin-top:4px;background:#FEF9EC;padding:4px 8px;border-radius:6px;">Late reason: ${d.opening?.lateReason || d.midday?.lateReason}</div>` : '';
 
-    return `<div class="mgr-location-card">
+    function checkPill(sub, label) {
+      if (!sub) return `<span class="mgr-check-pill mgr-check-missing">${label} Missing</span>`;
+      const cls = sub.onTime ? 'mgr-check-done' : 'mgr-check-late';
+      const txt = sub.onTime ? `${label} ✓` : `${label} - Late`;
+      return `<span class="mgr-check-pill ${cls}">${txt}</span>`;
+    }
+
+    function subInfo(sub) {
+      if (!sub) return '';
+      const photoStatus = sub.photosNeeded > 0
+        ? sub.photosTaken >= sub.photosNeeded
+          ? `<span style="color:#4ECB8D;font-size:10px;">📷 All photos taken</span>`
+          : `<span style="color:#E74C3C;font-size:10px;">📷 ${sub.photosTaken}/${sub.photosNeeded} photos taken</span>`
+        : '';
+      return `<div style="font-size:10px;color:#7BBDE1;margin-top:3px;">${sub.employee} · ${sub.time} ${photoStatus}</div>`;
+    }
+
+    const tempFlagHtml = d.tempFlags > 0
+      ? `<div style="font-size:11px;color:#E74C3C;font-weight:700;margin-top:6px;background:#2A1B1B;padding:5px 8px;border-radius:6px;">🌡 ${d.tempFlags} temp flag${d.tempFlags!==1?'s':''}</div>` : '';
+
+    const correctiveHtml = d.correctiveActions.length > 0
+      ? `<div style="margin-top:6px;background:#2A1B1B;padding:6px 8px;border-radius:6px;">
+          <div style="font-size:10px;font-weight:700;color:#E74C3C;margin-bottom:4px;">⚠ Corrective Actions Required</div>
+          ${d.correctiveActions.map(a => `<div style="font-size:11px;color:#FFB3B3;margin-bottom:3px;"><span style="color:#fff;font-weight:600;">${a.task}:</span> ${a.note}</div>`).join('')}
+        </div>` : '';
+
+    const lateHtml = (d.opening?.lateReason || d.midday?.lateReason)
+      ? `<div style="font-size:10px;color:#9a6500;margin-top:4px;background:#2A2010;padding:4px 8px;border-radius:6px;">Late reason: ${d.opening?.lateReason || d.midday?.lateReason}</div>` : '';
+
+    const allGood = !d.tempFlags && !d.correctiveActions.length && d.opening && d.midday && d.opening.onTime && d.midday.onTime;
+
+    return `<div class="mgr-location-card" style="${allGood ? 'border-left:3px solid #4ECB8D;' : d.correctiveActions.length || d.tempFlags ? 'border-left:3px solid #E74C3C;' : ''}">
       <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;">${loc}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <div>${openPill}${openInfo}</div>
-        <div>${midPill}${midInfo}</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div>${checkPill(d.opening,'Opening')}${subInfo(d.opening)}</div>
+        <div>${checkPill(d.midday,'Midday')}${subInfo(d.midday)}</div>
       </div>
-      ${flags}
-      ${lateReason}
+      ${tempFlagHtml}
+      ${correctiveHtml}
+      ${lateHtml}
     </div>`;
   }).join('');
 }
