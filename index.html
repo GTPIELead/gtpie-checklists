@@ -244,13 +244,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
     const _storage = firebase.storage();
     const _auth = firebase.auth();
 
-    _auth.signInAnonymously().then(() => {
-      console.log('Firebase ready');
-      window.firebaseReady = true;
-    }).catch(err => {
-      console.error('Firebase auth error:', err);
-      window.firebaseModuleError = err.message;
-    });
+    // Mark Firebase ready immediately - auth not required with open rules
+    window.firebaseReady = true;
+    console.log('Firebase ready');
+    // Sign in anonymously in background for future use
+    _auth.signInAnonymously().catch(err => console.log('Auth note:', err.message));
 
     window.uploadPhotoToStorage = async function(taskId, dataUrl, location) {
       const timestamp = new Date().toISOString().slice(0,10);
