@@ -218,6 +218,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 .toast.success-toast { background: var(--green); }
 
 .config-banner { background: #FFF3CD; border: 1px solid #FFEAA7; border-radius: var(--radius-sm); padding: 9px 12px; font-size: 12px; color: #856404; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.mgr-location-card { background: #1B2C48; border-radius: 12px; padding: 14px 16px; }
+.mgr-check-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display:inline-block; }
+.mgr-check-done { background: #EAFAF1; color: #1a8a4a; }
+.mgr-check-late { background: #FEF9EC; color: #9a6500; }
+.mgr-check-missing { background: #FDEDEC; color: #C0392B; }
 </style>
   <!-- Firebase SDK -->
   <script type="module">
@@ -1276,6 +1281,160 @@ function showToast(msg,type='') {
   t.textContent=msg; t.className=`toast ${type==='error'?'error':type==='success'?'success-toast':''} show`;
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),3000);
 }
+
+
+// ============================================================
+// MANAGER DASHBOARD
+// ============================================================
+
+const MGR_PIN = '7743'; // Change this PIN
+let pinEntry = '';
+let dashboardUnsubscribe = null;
+
+function showManagerDashboard() {
+  pinEntry = '';
+  updatePinDots();
+  document.getElementById('mgr-pin-screen').style.display = 'flex';
+  document.getElementById('mgr-content').style.display = 'none';
+  document.getElementById('pin-error').style.display = 'none';
+  showScreen('mgr-dashboard');
+}
+
+function pinPress(n) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += n.toString();
+  updatePinDots();
+  if (pinEntry.length === 4) setTimeout(pinSubmit, 150);
+}
+
+function pinClear() {
+  pinEntry = '';
+  updatePinDots();
+  document.getElementById('pin-error').style.display = 'none';
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('dot-' + i);
+    dot.style.background = i < pinEntry.length ? '#7BBDE1' : 'transparent';
+  }
+}
+
+function pinSubmit() {
+  if (pinEntry === MGR_PIN) {
+    document.getElementById('mgr-pin-screen').style.display = 'none';
+    document.getElementById('mgr-content').style.display = 'flex';
+    document.getElementById('mgr-date').textContent = new Date().toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+    loadDashboardData();
+  } else {
+    pinEntry = '';
+    updatePinDots();
+    document.getElementById('pin-error').style.display = 'block';
+    setTimeout(() => { document.getElementById('pin-error').style.display = 'none'; }, 2000);
+  }
+}
+
+async function loadDashboardData() {
+  const firebase = window._firebase;
+  if (!firebase) return;
+
+  const container = document.getElementById('mgr-locations');
+  container.innerHTML = '<div style="text-align:center;color:#7BBDE1;padding:40px;font-size:14px;">Loading...</div>';
+
+  // Get today's date range
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  try {
+    const { collection, db } = firebase;
+    const { query, where, getDocs, Timestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+    const q = query(
+      collection(db, 'checklists'),
+      where('createdAt', '>=', Timestamp.fromDate(today)),
+      where('createdAt', '<=', Timestamp.fromDate(todayEnd))
+    );
+
+    const snapshot = await getDocs(q);
+    const submissions = [];
+    snapshot.forEach(doc => submissions.push(doc.data()));
+
+    renderDashboard(submissions);
+  } catch(err) {
+    console.error('Dashboard error:', err);
+    container.innerHTML = '<div style="text-align:center;color:#E74C3C;padding:40px;font-size:13px;">Error loading data. Tap Refresh to try again.</div>';
+  }
+}
+
+function renderDashboard(submissions) {
+  const LOCATIONS = [
+    'Ann Arbor','Brighton','East Lansing','Midland','Norton Shores',
+    'Okemos','Plymouth','Portage','Terre Haute, IN',
+    'Traverse City - Front St','Traverse City - Park St'
+  ];
+
+  const locationData = {};
+  LOCATIONS.forEach(loc => {
+    locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: 0 };
+  });
+
+  submissions.forEach(data => {
+    const loc = data.location;
+    if (!locationData[loc]) locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: 0 };
+    const isOpening = (data.checklist||'').toLowerCase().includes('opening');
+    const isMidday = (data.checklist||'').toLowerCase().includes('midday');
+    const startTime = data.startTime ? new Date(data.startTime) : null;
+    let onTime = true;
+    if (startTime) {
+      const h = startTime.getHours() + startTime.getMinutes()/60;
+      onTime = (isOpening && h <= 9) || (isMidday && h <= 15);
+    }
+    const sub = { employee: data.employee, time: data.timestamp ? new Date(data.timestamp).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '--', onTime, lateReason: data.lateReason };
+    if (isOpening) locationData[loc].opening = sub;
+    if (isMidday) locationData[loc].midday = sub;
+    (data.tasks||[]).forEach(t => {
+      if (t.tempAlert) locationData[loc].tempFlags++;
+      if (t.value === 'no' && t.note) locationData[loc].noAnswers++;
+    });
+  });
+
+  // Summary
+  const completeBoth = LOCATIONS.filter(l => locationData[l].opening && locationData[l].midday).length;
+  const totalFlags = Object.values(locationData).reduce((s,l) => s + l.tempFlags + l.noAnswers, 0);
+  document.getElementById('mgr-complete-count').textContent = completeBoth + '/11';
+  document.getElementById('mgr-complete-count').style.color = completeBoth === 11 ? '#4ECB8D' : completeBoth >= 8 ? '#F9C74F' : '#E74C3C';
+  document.getElementById('mgr-flags-count').textContent = totalFlags;
+  document.getElementById('mgr-flags-count').style.color = totalFlags === 0 ? '#4ECB8D' : '#E74C3C';
+
+  // Location cards
+  const container = document.getElementById('mgr-locations');
+  container.innerHTML = LOCATIONS.map(loc => {
+    const d = locationData[loc];
+    const openPill = d.opening
+      ? `<span class="mgr-check-pill ${d.opening.onTime ? 'mgr-check-done' : 'mgr-check-late'}">${d.opening.onTime ? 'Opening ✓' : 'Opening - Late'}</span>`
+      : '<span class="mgr-check-pill mgr-check-missing">Opening Missing</span>';
+    const midPill = d.midday
+      ? `<span class="mgr-check-pill ${d.midday.onTime ? 'mgr-check-done' : 'mgr-check-late'}">${d.midday.onTime ? 'Midday ✓' : 'Midday - Late'}</span>`
+      : '<span class="mgr-check-pill mgr-check-missing">Midday Missing</span>';
+    const openInfo = d.opening ? `<div style="font-size:10px;color:#7BBDE1;margin-top:3px;">${d.opening.employee} · ${d.opening.time}</div>` : '';
+    const midInfo = d.midday ? `<div style="font-size:10px;color:#7BBDE1;margin-top:3px;">${d.midday.employee} · ${d.midday.time}</div>` : '';
+    const flags = (d.tempFlags + d.noAnswers) > 0 ? `<div style="font-size:11px;color:#E74C3C;font-weight:700;margin-top:6px;">⚠ ${d.tempFlags} temp flag${d.tempFlags!==1?'s':''} · ${d.noAnswers} corrective action${d.noAnswers!==1?'s':''}</div>` : '';
+    const lateReason = (d.opening?.lateReason || d.midday?.lateReason) ? `<div style="font-size:10px;color:#9a6500;margin-top:4px;background:#FEF9EC;padding:4px 8px;border-radius:6px;">Late reason: ${d.opening?.lateReason || d.midday?.lateReason}</div>` : '';
+
+    return `<div class="mgr-location-card">
+      <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;">${loc}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <div>${openPill}${openInfo}</div>
+        <div>${midPill}${midInfo}</div>
+      </div>
+      ${flags}
+      ${lateReason}
+    </div>`;
+  }).join('');
+}
+
 </script>
 
 <!-- SPLASH -->
@@ -1319,6 +1478,7 @@ function showToast(msg,type='') {
     <div class="form-group"><label>Last Name</label><input type="text" id="last-name" placeholder="Your last name" autocomplete="family-name"></div>
     <div class="form-group"><label>Location</label><select id="location-select"><option value="">Select your location...</option><option value="Ann Arbor">Ann Arbor</option><option value="Brighton">Brighton</option><option value="East Lansing">East Lansing</option><option value="Midland">Midland</option><option value="Norton Shores">Norton Shores</option><option value="Okemos">Okemos</option><option value="Plymouth">Plymouth</option><option value="Portage">Portage</option><option value="Terre Haute, IN">Terre Haute, IN</option><option value="Traverse City – Front St">Traverse City – Front St</option><option value="Traverse City – Park St">Traverse City – Park St</option></select></div>
     <button class="btn-primary" onclick="handleLogin()">Start Checklists →</button>
+      <button onclick="showManagerDashboard()" style="background:none;border:none;color:#7BBDE1;font-size:12px;margin-top:8px;cursor:pointer;text-decoration:underline;">Manager Dashboard</button>
   </div>
 </div>
 
@@ -1406,5 +1566,72 @@ function showToast(msg,type='') {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- MANAGER DASHBOARD -->
+<div id="mgr-dashboard" class="screen" style="background:#0F1923;min-height:100vh;flex-direction:column;">
+
+  <!-- PIN Screen -->
+  <div id="mgr-pin-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;">
+    <div style="width:64px;height:64px;background:#1B2C48;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:28px;">🥧</div>
+    <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:6px;">Manager Dashboard</div>
+    <div style="font-size:13px;color:#7BBDE1;margin-bottom:32px;">Enter your PIN to continue</div>
+    <div style="display:flex;gap:12px;margin-bottom:24px;" id="pin-dots">
+      <div style="width:14px;height:14px;border-radius:50%;border:2px solid #7BBDE1;background:transparent;" id="dot-0"></div>
+      <div style="width:14px;height:14px;border-radius:50%;border:2px solid #7BBDE1;background:transparent;" id="dot-1"></div>
+      <div style="width:14px;height:14px;border-radius:50%;border:2px solid #7BBDE1;background:transparent;" id="dot-2"></div>
+      <div style="width:14px;height:14px;border-radius:50%;border:2px solid #7BBDE1;background:transparent;" id="dot-3"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:220px;">
+      <button onclick="pinPress(1)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">1</button>
+      <button onclick="pinPress(2)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">2</button>
+      <button onclick="pinPress(3)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">3</button>
+      <button onclick="pinPress(4)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">4</button>
+      <button onclick="pinPress(5)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">5</button>
+      <button onclick="pinPress(6)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">6</button>
+      <button onclick="pinPress(7)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">7</button>
+      <button onclick="pinPress(8)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">8</button>
+      <button onclick="pinPress(9)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">9</button>
+      <button onclick="pinClear()" style="padding:18px;background:#2A3F5C;color:#7BBDE1;border:none;border-radius:12px;font-size:14px;cursor:pointer;">CLR</button>
+      <button onclick="pinPress(0)" style="padding:18px;background:#1B2C48;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:600;cursor:pointer;">0</button>
+      <button onclick="pinSubmit()" style="padding:18px;background:#7BBDE1;color:#1B2C48;border:none;border-radius:12px;font-size:20px;font-weight:700;cursor:pointer;">→</button>
+    </div>
+    <div id="pin-error" style="display:none;color:#E74C3C;font-size:13px;margin-top:16px;">Incorrect PIN. Try again.</div>
+    <button onclick="showScreen('splash')" style="margin-top:24px;background:none;border:none;color:#7BBDE1;font-size:13px;cursor:pointer;">← Back</button>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div id="mgr-content" style="display:none;flex-direction:column;flex:1;">
+    <!-- Header -->
+    <div style="background:#1B2C48;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:11px;color:#7BBDE1;text-transform:uppercase;letter-spacing:0.8px;">Grand Traverse Pie Co.</div>
+        <div style="font-size:18px;font-weight:700;color:#fff;" id="mgr-date"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button onclick="loadDashboardData()" style="background:#7BBDE1;border:none;color:#1B2C48;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">↻ Refresh</button>
+        <button onclick="showScreen('splash')" style="background:none;border:1px solid #7BBDE1;color:#7BBDE1;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;">Exit</button>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div style="padding:16px 16px 8px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;" id="mgr-summary">
+      <div style="background:#1B2C48;border-radius:12px;padding:14px;">
+        <div style="font-size:10px;color:#7BBDE1;text-transform:uppercase;letter-spacing:0.5px;">Complete</div>
+        <div style="font-size:28px;font-weight:800;color:#fff;" id="mgr-complete-count">--</div>
+        <div style="font-size:11px;color:#7BBDE1;">of 11 locations</div>
+      </div>
+      <div style="background:#1B2C48;border-radius:12px;padding:14px;">
+        <div style="font-size:10px;color:#7BBDE1;text-transform:uppercase;letter-spacing:0.5px;">Flags</div>
+        <div style="font-size:28px;font-weight:800;color:#fff;" id="mgr-flags-count">--</div>
+        <div style="font-size:11px;color:#7BBDE1;">temp + corrective</div>
+      </div>
+    </div>
+
+    <!-- Location Cards -->
+    <div style="padding:8px 16px 24px;display:flex;flex-direction:column;gap:8px;" id="mgr-locations">
+      <div style="text-align:center;color:#7BBDE1;padding:40px;font-size:14px;">Loading...</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
