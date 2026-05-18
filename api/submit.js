@@ -1,5 +1,5 @@
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
 
 if (!getApps().length) {
@@ -40,11 +40,17 @@ module.exports = async function handler(req, res) {
           const file = bucket.file(filename);
           const base64Data = task.photoData.replace(/^data:image\/\w+;base64,/, '');
           const buffer = Buffer.from(base64Data, 'base64');
+          
           await file.save(buffer, {
-            metadata: { contentType: 'image/jpeg' },
-            public: true
+            metadata: { contentType: 'image/jpeg' }
           });
+          
+          // Make file publicly readable
+          await file.makePublic();
+          
+          // Use direct public URL - no access token needed
           const photoUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
+          console.log('Photo uploaded:', photoUrl);
           return { ...task, photoUrl, photoData: null };
         } catch (photoErr) {
           console.error('Photo upload error:', photoErr.message);
@@ -54,14 +60,20 @@ module.exports = async function handler(req, res) {
       return { ...task, photoData: null };
     }));
 
-    const docData = { ...payload, tasks, createdAt: new Date() };
+    // Save to Firestore
+    const docData = {
+      ...payload,
+      tasks,
+      createdAt: FieldValue.serverTimestamp()
+    };
     delete docData.signature;
+    delete docData.photoData;
 
     const docRef = await db.collection('checklists').add(docData);
     console.log('Saved to Firestore:', docRef.id);
     return res.status(200).json({ success: true, id: docRef.id });
   } catch (err) {
-    console.error('Submit error:', err.message);
+    console.error('Submit error:', err.message, err.stack);
     return res.status(500).json({ error: err.message });
   }
 };
