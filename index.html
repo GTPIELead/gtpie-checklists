@@ -227,7 +227,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
     import { getStorage, ref, uploadString, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
     import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
@@ -246,10 +246,48 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
     const storage = getStorage(app);
     const auth = getAuth(app);
 
-    // Sign in anonymously so we can write to Firestore
+    // Sign in anonymously
     signInAnonymously(auth).catch(err => console.error('Firebase auth error:', err));
 
-    // Make available globally
+    // Upload photo to Storage and return download URL
+    window.uploadPhotoToStorage = async function(taskId, dataUrl, location) {
+      const timestamp = new Date().toISOString().slice(0,10);
+      const loc = (location || 'unknown').replace(/[^a-z0-9]/gi, '_');
+      const photoRef = ref(storage, 'photos/' + loc + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg');
+      await uploadString(photoRef, dataUrl, 'data_url');
+      const url = await getDownloadURL(photoRef);
+      console.log('Uploaded photo for task', taskId, ':', url);
+      return url;
+    };
+
+    // Save checklist to Firestore
+    window.saveToFirestore = async function(payload) {
+      const docRef = await addDoc(collection(db, 'checklists'), {
+        ...payload,
+        createdAt: serverTimestamp()
+      });
+      console.log('Saved to Firestore:', docRef.id);
+      return docRef.id;
+    };
+
+    // Load today's submissions for dashboard
+    window.loadTodaySubmissions = async function() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+      const q = query(
+        collection(db, 'checklists'),
+        where('createdAt', '>=', Timestamp.fromDate(today)),
+        where('createdAt', '<=', Timestamp.fromDate(todayEnd))
+      );
+      const snapshot = await getDocs(q);
+      const submissions = [];
+      snapshot.forEach(doc => submissions.push(doc.data()));
+      return submissions;
+    };
+
+    // Legacy firebase object for backward compat
     window._firebase = { db, storage, auth, collection, addDoc, serverTimestamp, ref, uploadString, getDownloadURL };
   </script>
 </head>
@@ -1103,21 +1141,14 @@ function handlePhoto(taskId, input) {
           if (txt) txt.innerHTML = '<strong style="color:#1B2C48;">Uploading...</strong>';
         }
 
-        // Upload to Firebase Storage immediately
-        const firebase = window._firebase;
-        if (firebase) {
-          const timestamp = new Date().toISOString().slice(0,10);
-          const location = (currentUser && currentUser.location || 'unknown').replace(/[^a-z0-9]/gi, '_');
-          const photoRef = firebase.ref(firebase.storage, 'photos/' + location + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg');
+        // Upload to Firebase Storage using global function from module
+        if (window.uploadPhotoToStorage) {
           const uploadKey = taskId + '_' + Date.now();
           pendingUploads.add(uploadKey);
-          firebase.uploadString(photoRef, compressed, 'data_url').then(() => {
-            return firebase.getDownloadURL(photoRef);
-          }).then(url => {
-            // Store URL
+          const location = (currentUser && currentUser.location) || 'unknown';
+          window.uploadPhotoToStorage(taskId, compressed, location).then(url => {
             taskStates[taskId].photoUrl = url;
             taskStates[taskId].photoData = null;
-            // Update preview to use Storage URL
             const area2 = document.getElementById('photo-area-' + taskId);
             if (area2) {
               const preview2 = area2.querySelector('.photo-preview');
@@ -1125,7 +1156,6 @@ function handlePhoto(taskId, input) {
               const txt2 = area2.querySelector('.photo-area-text');
               if (txt2) txt2.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
             }
-            // Save URL to localStorage
             try { localStorage.setItem('gtpie_photo_' + taskId, url); } catch(e) {}
             pendingUploads.delete(uploadKey);
             showToast('✓ Photo uploaded', 'success');
@@ -1193,6 +1223,8 @@ function hasSig() { return !!signatures[currentChecklistId]; }
 // ── SUBMIT ──
 async function submitChecklist() {
   if (!hasSig()) { showToast('Manager signature required', 'error'); return; }
+  console.log('Submit started. Pending uploads:', pendingUploads.size);
+  console.log('taskStates at submit:', JSON.stringify(taskStates));
   // Wait for any pending photo uploads to complete
   if (pendingUploads.size > 0) {
     showToast('Please wait — photos still uploading...', 'error');
@@ -1240,37 +1272,12 @@ async function submitChecklist() {
   try {
     // Save to Firebase
     try {
-      const firebase = window._firebase;
-      if (firebase) {
+      if (window.saveToFirestore) {
         const leanPayload = { ...payload };
         delete leanPayload.signature;
-
-        // Use already-uploaded photoUrls or upload any remaining photoData
-        const tasksWithPhotoUrls = await Promise.all(leanPayload.tasks.map(async (t) => {
-          // Already uploaded during capture - just use the URL
-          if (t.photoUrl) return { ...t, photoData: null };
-          // Fallback: upload now if photoData still in memory
-          if (t.photoData) {
-            try {
-              const photoRef = firebase.ref(firebase.storage, `photos/${payload.location}/${payload.timestamp}/${t.id}.jpg`);
-              await firebase.uploadString(photoRef, t.photoData, 'data_url');
-              const url = await firebase.getDownloadURL(photoRef);
-              return { ...t, photoUrl: url, photoData: null };
-            } catch(e) {
-              return { ...t, photoData: null };
-            }
-          }
-          return t;
-        }));
-
-        leanPayload.tasks = tasksWithPhotoUrls;
-        leanPayload.createdAt = firebase.serverTimestamp();
-
-        // Save to Firestore
-        await firebase.addDoc(
-          firebase.collection(firebase.db, 'checklists'),
-          leanPayload
-        );
+        // Strip photoData, keep photoUrl
+        leanPayload.tasks = leanPayload.tasks.map(t => ({ ...t, photoData: null }));
+        await window.saveToFirestore(leanPayload);
         showToast('Saved to Firebase', 'success');
       }
     } catch(err) {
@@ -1369,26 +1376,8 @@ async function loadDashboardData() {
   const container = document.getElementById('mgr-locations');
   container.innerHTML = '<div style="text-align:center;color:#7BBDE1;padding:40px;font-size:14px;">Loading...</div>';
 
-  // Get today's date range
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-
   try {
-    const { collection, db } = firebase;
-    const { query, where, getDocs, Timestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-
-    const q = query(
-      collection(db, 'checklists'),
-      where('createdAt', '>=', Timestamp.fromDate(today)),
-      where('createdAt', '<=', Timestamp.fromDate(todayEnd))
-    );
-
-    const snapshot = await getDocs(q);
-    const submissions = [];
-    snapshot.forEach(doc => submissions.push(doc.data()));
-
+    const submissions = await window.loadTodaySubmissions();
     renderDashboard(submissions);
   } catch(err) {
     console.error('Dashboard error:', err);
