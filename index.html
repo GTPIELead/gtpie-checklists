@@ -1142,7 +1142,18 @@ function handlePhoto(taskId, input) {
         }
 
         // Upload to Firebase Storage using global function from module
-        if (window.uploadPhotoToStorage) {
+        const doUpload = async () => {
+          // Wait for Firebase module to load
+          let attempts = 0;
+          while (!window.uploadPhotoToStorage && attempts < 20) {
+            await new Promise(r => setTimeout(r, 250));
+            attempts++;
+          }
+          if (!window.uploadPhotoToStorage) {
+            console.error('Firebase storage not available');
+            showToast('✓ Photo captured (offline)', 'success');
+            return;
+          }
           const uploadKey = taskId + '_' + Date.now();
           pendingUploads.add(uploadKey);
           const location = (currentUser && currentUser.location) || 'unknown';
@@ -1166,11 +1177,8 @@ function handlePhoto(taskId, input) {
             if (txt3) txt3.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
             showToast('✓ Photo captured', 'success');
           });
-        } else {
-          const txt4 = document.querySelector('#photo-area-' + taskId + ' .photo-area-text');
-          if (txt4) txt4.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
-          showToast('✓ Photo captured', 'success');
-        }
+        };
+        doUpload();
       };
       img.src = e.target.result;
     };
