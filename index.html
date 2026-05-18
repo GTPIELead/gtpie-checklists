@@ -262,12 +262,18 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
     };
 
     window.saveToFirestore = async function(payload) {
-      const docRef = await _db.collection('checklists').add({
-        ...payload,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      console.log('Saved to Firestore:', docRef.id);
-      return docRef.id;
+      try {
+        console.log('Attempting Firestore save, _db:', !!_db, 'firebase:', typeof firebase);
+        const docRef = await _db.collection('checklists').add({
+          ...payload,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('Saved to Firestore successfully:', docRef.id);
+        return docRef.id;
+      } catch(err) {
+        console.error('Firestore save FAILED:', err.code, err.message);
+        throw err;
+      }
     };
 
     window.loadTodaySubmissions = async function() {
