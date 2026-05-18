@@ -230,6 +230,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
     import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
     import { getStorage, ref, uploadString, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
     import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    try {
 
     const firebaseConfig = {
       apiKey: "AIzaSyDzlwbbZoYDFDHjUe00e6q5eEOASJ0SM9E",
@@ -289,6 +290,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 
     // Legacy firebase object for backward compat
     window._firebase = { db, storage, auth, collection, addDoc, serverTimestamp, ref, uploadString, getDownloadURL };
+    window.firebaseReady = true;
+    console.log('Firebase module loaded successfully');
+    } catch(moduleErr) {
+      window.firebaseModuleError = moduleErr.message;
+      console.error('Firebase module error:', moduleErr);
+    }
   </script>
 </head>
 <body>
@@ -1145,13 +1152,13 @@ function handlePhoto(taskId, input) {
         const doUpload = async () => {
           // Wait for Firebase module to load
           let attempts = 0;
-          while (!window.uploadPhotoToStorage && attempts < 20) {
+          while (!window.firebaseReady && !window.firebaseModuleError && attempts < 20) {
             await new Promise(r => setTimeout(r, 250));
             attempts++;
           }
-          if (!window.uploadPhotoToStorage) {
-            console.error('Firebase storage not available');
-            showToast('✓ Photo captured (offline)', 'success');
+          if (window.firebaseModuleError || !window.uploadPhotoToStorage) {
+            console.error('Firebase storage not available:', window.firebaseModuleError);
+            showToast('✓ Photo captured (storage unavailable)', 'success');
             return;
           }
           const uploadKey = taskId + '_' + Date.now();
@@ -1282,11 +1289,14 @@ async function submitChecklist() {
     try {
       // Wait up to 5 seconds for Firebase module to load
       let attempts = 0;
-      while (!window.saveToFirestore && attempts < 10) {
+      while (!window.firebaseReady && !window.firebaseModuleError && attempts < 20) {
         await new Promise(r => setTimeout(r, 500));
         attempts++;
       }
-      if (window.saveToFirestore) {
+      if (window.firebaseModuleError) {
+        console.error('Firebase module failed:', window.firebaseModuleError);
+        showToast('Firebase error: ' + window.firebaseModuleError, 'error');
+      } else if (window.saveToFirestore) {
         const leanPayload = { ...payload };
         delete leanPayload.signature;
         leanPayload.tasks = leanPayload.tasks.map(t => ({ ...t, photoData: null }));
