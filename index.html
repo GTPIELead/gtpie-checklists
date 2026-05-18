@@ -479,9 +479,22 @@ function saveProgress(id, states) {
   try { sessionStorage.setItem(key, val); } catch(e) {}
 }
 function loadProgress(id) {
-  try { const ls = localStorage.getItem(getProgressKey(id)); if (ls) return JSON.parse(ls); } catch(e) {}
-  try { const ss = sessionStorage.getItem(getProgressKey(id)); if (ss) return JSON.parse(ss); } catch(e) {}
-  return {};
+  let progress = {};
+  try { const ls = localStorage.getItem(getProgressKey(id)); if (ls) progress = JSON.parse(ls); } catch(e) {}
+  if (!Object.keys(progress).length) {
+    try { const ss = sessionStorage.getItem(getProgressKey(id)); if (ss) progress = JSON.parse(ss); } catch(e) {}
+  }
+  // Restore photo URLs from localStorage
+  Object.keys(progress).forEach(taskId => {
+    try {
+      const photoUrl = localStorage.getItem('gtpie_photo_' + taskId);
+      if (photoUrl) {
+        progress[taskId].photo = 'captured';
+        progress[taskId].photoUrl = photoUrl;
+      }
+    } catch(e) {}
+  });
+  return progress;
 }
 function getRandKey(id, type) { return `gtpie_rand_${getTodayKey()}_${id}_${type}`; }
 
@@ -1048,22 +1061,23 @@ function handlePhoto(taskId, input) {
     if (!file) return;
     if (!taskStates[taskId]) taskStates[taskId] = {};
 
-    // Compress photo to ~800px wide JPEG before storing
     const reader = new FileReader();
     reader.onload = function(e) {
       const img = new Image();
       img.onload = function() {
+        // Compress photo
         const canvas = document.createElement('canvas');
-        const maxW = 600;
+        const maxW = 800;
         const scale = Math.min(1, maxW / img.width);
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const compressed = canvas.toDataURL('image/jpeg', 0.4);
+        const compressed = canvas.toDataURL('image/jpeg', 0.6);
+
+        // Update UI immediately
         taskStates[taskId].photo = 'captured';
         taskStates[taskId].photoData = compressed;
-        // Update UI
         const area = document.getElementById('photo-area-' + taskId);
         if (area) {
           area.style.background = '#EAF4FD';
@@ -1071,9 +1085,41 @@ function handlePhoto(taskId, input) {
           const icon = area.querySelector('.photo-area-icon');
           const txt = area.querySelector('.photo-area-text');
           if (icon) icon.textContent = '📷';
-          if (txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
+          if (txt) txt.innerHTML = '<strong>Uploading...</strong><span>Please wait</span>';
         }
-        showToast('✓ Photo captured', 'success');
+
+        // Upload to Firebase Storage immediately
+        const firebase = window._firebase;
+        if (firebase) {
+          const timestamp = new Date().toISOString().slice(0,10);
+          const location = (currentUser && currentUser.location || 'unknown').replace(/[^a-z0-9]/gi, '_');
+          const photoRef = firebase.ref(firebase.storage, `photos/${location}/${timestamp}/${taskId}_${Date.now()}.jpg`);
+          firebase.uploadString(photoRef, compressed, 'data_url').then(() => {
+            return firebase.getDownloadURL(photoRef);
+          }).then(url => {
+            // Store URL in taskStates and localStorage
+            taskStates[taskId].photoUrl = url;
+            taskStates[taskId].photoData = null; // Clear base64 from memory
+            // Save URL to localStorage so it survives refresh
+            try {
+              const photoKey = 'gtpie_photo_' + taskId;
+              localStorage.setItem(photoKey, url);
+            } catch(e) {}
+            // Update UI to show success
+            if (area) {
+              if (txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
+            }
+            showToast('✓ Photo uploaded', 'success');
+          }).catch(err => {
+            console.error('Photo upload error:', err);
+            // Keep photoData in memory as fallback even if upload fails
+            if (area && txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
+            showToast('✓ Photo captured', 'success');
+          });
+        } else {
+          if (area && txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
+          showToast('✓ Photo captured', 'success');
+        }
       };
       img.src = e.target.result;
     };
@@ -1155,7 +1201,7 @@ async function submitChecklist() {
     dailyBOTS: getDailyBOTS().title,
     signature: signatures[currentChecklistId]||'',
     lateReason: lateReasons[currentChecklistId]||null,
-    tasks: allTasks.map(t=>({id:t.id,name:t.name,type:t.type,value:taskStates[t.id]?.value||'unanswered',temp:taskStates[t.id]?.temp||null,note:taskStates[t.id]?.note||'',hasPhoto:!!(taskStates[t.id]?.photo),photoData:taskStates[t.id]?.photoData||null}))
+    tasks: allTasks.map(t=>({id:t.id,name:t.name,type:t.type,value:taskStates[t.id]?.value||'unanswered',temp:taskStates[t.id]?.temp||null,note:taskStates[t.id]?.note||'',hasPhoto:!!(taskStates[t.id]?.photo),photoUrl:taskStates[t.id]?.photoUrl||null,photoData:taskStates[t.id]?.photoData||null}))
   };
 
   try {
@@ -1166,8 +1212,11 @@ async function submitChecklist() {
         const leanPayload = { ...payload };
         delete leanPayload.signature;
 
-        // Upload photos to Firebase Storage and replace with URLs
+        // Use already-uploaded photoUrls or upload any remaining photoData
         const tasksWithPhotoUrls = await Promise.all(leanPayload.tasks.map(async (t) => {
+          // Already uploaded during capture - just use the URL
+          if (t.photoUrl) return { ...t, photoData: null };
+          // Fallback: upload now if photoData still in memory
           if (t.photoData) {
             try {
               const photoRef = firebase.ref(firebase.storage, `photos/${payload.location}/${payload.timestamp}/${t.id}.jpg`);
@@ -1194,6 +1243,11 @@ async function submitChecklist() {
     } catch(err) {
       console.error('Firebase save error:', err);
     }
+    // Clear photo URLs from localStorage after successful submit
+    try {
+      const allTasks2 = getAllTasks(currentChecklistId==='midday'?MIDDAY_CHECKLIST:FOH_OPEN_CHECKLIST);
+      allTasks2.forEach(t => localStorage.removeItem('gtpie_photo_' + t.id));
+    } catch(e) {}
     markCompleted(currentChecklistId);
     saveProgress(currentChecklistId, taskStates);
     document.getElementById('success-sub').textContent = `${cl.label} submitted`;
