@@ -224,77 +224,39 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 .mgr-check-late { background: #FEF9EC; color: #9a6500; }
 .mgr-check-missing { background: #FDEDEC; color: #C0392B; }
 </style>
-  <!-- Firebase SDK (compat version) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <!-- Firebase via Vercel API - no client SDK needed -->
   <script>
-    window.addEventListener('load', function() {
-      if (typeof firebase === 'undefined') {
-        console.error('Firebase CDN failed to load');
-        window.firebaseModuleError = 'Firebase CDN blocked';
-        return;
-      }
-      const firebaseConfig = {
-        apiKey: "AIzaSyDzlwbbZoYDFDHjUe00e6q5eEOASJ0SM9E",
-        authDomain: "gtpie-checklists.firebaseapp.com",
-        projectId: "gtpie-checklists",
-        storageBucket: "gtpie-checklists.firebasestorage.app",
-        messagingSenderId: "239795446845",
-        appId: "1:239795446845:web:4679630763d9f0ab9af654"
-      };
+    // Simple API-based Firebase integration
+    const API_BASE = '/api';
 
-      firebase.initializeApp(firebaseConfig);
-      const _db = firebase.firestore();
-      const _storage = firebase.storage();
-      const _auth = firebase.auth();
+    window.firebaseReady = true;
 
-      window.firebaseReady = true;
-      console.log('Firebase ready');
-      _auth.signInAnonymously().catch(err => console.log('Auth note:', err.message));
+    window.uploadPhotoToStorage = async function(taskId, dataUrl, location) {
+      // Photos are now uploaded as part of the submit payload
+      // Just return the dataUrl so it gets sent with the submission
+      return dataUrl;
+    };
 
-      window.uploadPhotoToStorage = async function(taskId, dataUrl, location) {
-        const timestamp = new Date().toISOString().slice(0,10);
-        const loc = (location || 'unknown').replace(/[^a-z0-9]/gi, '_');
-        const path = 'photos/' + loc + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg';
-        const storageRef = _storage.ref(path);
-        const snapshot = await storageRef.putString(dataUrl, 'data_url');
-        const url = await snapshot.ref.getDownloadURL();
-        console.log('Photo uploaded:', url);
-        return url;
-      };
+    window.saveToFirestore = async function(payload) {
+      const res = await fetch(API_BASE + '/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      console.log('Saved to Firestore via API:', data.id);
+      return data.id;
+    };
 
-      window.saveToFirestore = async function(payload) {
-        try {
-          console.log('Attempting Firestore save, _db:', !!_db, 'firebase:', typeof firebase);
-          const docRef = await _db.collection('checklists').add({
-            ...payload,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          console.log('Saved to Firestore successfully:', docRef.id);
-          return docRef.id;
-        } catch(err) {
-          console.error('Firestore save FAILED:', err.code, err.message);
-          throw err;
-        }
-      };
-
-      window.loadTodaySubmissions = async function() {
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23,59,59,999);
-        const snapshot = await _db.collection('checklists')
-          .where('createdAt', '>=', today)
-          .where('createdAt', '<=', todayEnd)
-          .get();
-        const submissions = [];
-        snapshot.forEach(doc => submissions.push(doc.data()));
-        return submissions;
-      };
-    }); // end window.onload
+    window.loadTodaySubmissions = async function() {
+      const res = await fetch(API_BASE + '/dashboard');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Load failed');
+      return data.submissions || [];
+    };
   </script>
+
 </head>
 <body>
 
@@ -1146,44 +1108,12 @@ function handlePhoto(taskId, input) {
           if (txt) txt.innerHTML = '<strong style="color:#1B2C48;">Uploading...</strong>';
         }
 
-        // Upload to Firebase Storage using global function from module
-        const doUpload = async () => {
-          // Wait for Firebase module to load
-          let attempts = 0;
-          while (!window.firebaseReady && !window.firebaseModuleError && attempts < 20) {
-            await new Promise(r => setTimeout(r, 250));
-            attempts++;
-          }
-          if (window.firebaseModuleError || !window.uploadPhotoToStorage) {
-            console.error('Firebase storage not available:', window.firebaseModuleError);
-            showToast('✓ Photo captured (storage unavailable)', 'success');
-            return;
-          }
-          const uploadKey = taskId + '_' + Date.now();
-          pendingUploads.add(uploadKey);
-          const location = (currentUser && currentUser.location) || 'unknown';
-          window.uploadPhotoToStorage(taskId, compressed, location).then(url => {
-            taskStates[taskId].photoUrl = url;
-            taskStates[taskId].photoData = null;
-            const area2 = document.getElementById('photo-area-' + taskId);
-            if (area2) {
-              const preview2 = area2.querySelector('.photo-preview');
-              if (preview2) preview2.src = url;
-              const txt2 = area2.querySelector('.photo-area-text');
-              if (txt2) txt2.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
-            }
-            try { localStorage.setItem('gtpie_photo_' + taskId, url); } catch(e) {}
-            pendingUploads.delete(uploadKey);
-            showToast('✓ Photo uploaded', 'success');
-          }).catch(err => {
-            console.error('Photo upload error:', err);
-            pendingUploads.delete(uploadKey);
-            const txt3 = document.querySelector('#photo-area-' + taskId + ' .photo-area-text');
-            if (txt3) txt3.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
-            showToast('✓ Photo captured', 'success');
-          });
-        };
-        doUpload();
+        // Store photo data - will be uploaded with submission
+        taskStates[taskId].photoData = compressed;
+        taskStates[taskId].photo = 'captured';
+        const txt5 = document.querySelector('#photo-area-' + taskId + ' .photo-area-text');
+        if (txt5) txt5.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
+        showToast('✓ Photo captured', 'success');
       };
       img.src = e.target.result;
     };
@@ -1297,7 +1227,8 @@ async function submitChecklist() {
       } else if (window.saveToFirestore) {
         const leanPayload = { ...payload };
         delete leanPayload.signature;
-        leanPayload.tasks = leanPayload.tasks.map(t => ({ ...t, photoData: null }));
+        // Keep photoData - API endpoint handles upload to Storage
+        // leanPayload.tasks already includes photoData
         try {
           await window.saveToFirestore(leanPayload);
           showToast('Saved to Firebase ✓', 'success');
