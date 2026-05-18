@@ -1272,16 +1272,25 @@ async function submitChecklist() {
   try {
     // Save to Firebase
     try {
+      // Wait up to 5 seconds for Firebase module to load
+      let attempts = 0;
+      while (!window.saveToFirestore && attempts < 10) {
+        await new Promise(r => setTimeout(r, 500));
+        attempts++;
+      }
       if (window.saveToFirestore) {
         const leanPayload = { ...payload };
         delete leanPayload.signature;
-        // Strip photoData, keep photoUrl
         leanPayload.tasks = leanPayload.tasks.map(t => ({ ...t, photoData: null }));
         await window.saveToFirestore(leanPayload);
-        showToast('Saved to Firebase', 'success');
+        showToast('Saved to Firebase ✓', 'success');
+      } else {
+        console.error('Firebase not loaded after 5 seconds');
+        showToast('Warning: Could not save to database', 'error');
       }
     } catch(err) {
-      console.error('Firebase save error:', err);
+      console.error('Firebase save error:', err.message, err);
+      showToast('Save error: ' + err.message, 'error');
     }
     // Clear photo URLs from localStorage after successful submit
     try {
