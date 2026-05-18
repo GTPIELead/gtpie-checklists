@@ -1106,9 +1106,15 @@ function handlePhoto(taskId, input) {
               const photoKey = 'gtpie_photo_' + taskId;
               localStorage.setItem(photoKey, url);
             } catch(e) {}
-            // Update UI to show success
+            // Update UI to show photo preview
             if (area) {
-              if (txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
+              area.style.background = '#EAF4FD';
+              area.style.border = '1.5px solid #7BBDE1';
+              area.style.flexDirection = 'column';
+              area.style.padding = '8px';
+              area.innerHTML = `<img src="${url}" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:6px;">
+                <div style="font-size:11px;color:#1B2C48;font-weight:700;text-align:center;">Photo captured ✓ <span style="font-weight:400;color:#555;">Tap to retake</span></div>
+                <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="handlePhoto('${taskId}',this)">`;
             }
             showToast('✓ Photo uploaded', 'success');
           }).catch(err => {
@@ -1373,12 +1379,12 @@ function renderDashboard(submissions) {
 
   const locationData = {};
   LOCATIONS.forEach(loc => {
-    locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: [], correctiveActions: [], photosMissing: [] };
+    locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: [], correctiveActions: [], photos: [] };
   });
 
   submissions.forEach(data => {
     const loc = data.location;
-    if (!locationData[loc]) locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: [], correctiveActions: [], photosMissing: [] };
+    if (!locationData[loc]) locationData[loc] = { opening: null, midday: null, tempFlags: 0, noAnswers: [], correctiveActions: [], photos: [] };
     const isOpening = (data.checklist||'').toLowerCase().includes('opening');
     const isMidday = (data.checklist||'').toLowerCase().includes('midday');
     const startTime = data.startTime ? new Date(data.startTime) : null;
@@ -1409,6 +1415,9 @@ function renderDashboard(submissions) {
       if (t.tempAlert) locationData[loc].tempFlags++;
       if (t.value === 'no' && t.note) {
         locationData[loc].correctiveActions.push({ task: t.name, note: t.note, checklist: isOpening ? 'Opening' : 'Midday' });
+      }
+      if (t.photoUrl) {
+        locationData[loc].photos.push({ url: t.photoUrl, task: t.name, checklist: isOpening ? 'Opening' : 'Midday' });
       }
     });
   });
@@ -1457,6 +1466,16 @@ function renderDashboard(submissions) {
 
     const allGood = !d.tempFlags && !d.correctiveActions.length && d.opening && d.midday && d.opening.onTime && d.midday.onTime;
 
+    const photosHtml = d.photos.length > 0
+      ? `<div style="margin-top:8px;">
+          <div style="font-size:10px;font-weight:700;color:#7BBDE1;text-transform:uppercase;margin-bottom:6px;">Photos (${d.photos.length})</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${d.photos.map(p => `<a href="${p.url}" target="_blank" style="display:block;">
+              <img src="${p.url}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1.5px solid #2A3F5C;" title="${p.task} - ${p.checklist}">
+            </a>`).join('')}
+          </div>
+        </div>` : '';
+
     return `<div class="mgr-location-card" style="${allGood ? 'border-left:3px solid #4ECB8D;' : d.correctiveActions.length || d.tempFlags ? 'border-left:3px solid #E74C3C;' : ''}">
       <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;">${loc}</div>
       <div style="display:flex;flex-direction:column;gap:4px;">
@@ -1466,6 +1485,7 @@ function renderDashboard(submissions) {
       ${tempFlagHtml}
       ${correctiveHtml}
       ${lateHtml}
+      ${photosHtml}
     </div>`;
   }).join('');
 }
