@@ -1076,17 +1076,30 @@ function handlePhoto(taskId, input) {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const compressed = canvas.toDataURL('image/jpeg', 0.6);
 
-        // Update UI immediately
+        // Mark as captured in memory
         taskStates[taskId].photo = 'captured';
         taskStates[taskId].photoData = compressed;
+
+        // Show preview immediately using a separate img element
         const area = document.getElementById('photo-area-' + taskId);
         if (area) {
           area.style.background = '#EAF4FD';
           area.style.border = '1.5px solid #7BBDE1';
+          area.style.padding = '8px';
+          area.style.flexDirection = 'column';
+          // Add preview image if not already there
+          let preview = area.querySelector('.photo-preview');
+          if (!preview) {
+            preview = document.createElement('img');
+            preview.className = 'photo-preview';
+            preview.style.cssText = 'width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:6px;display:block;';
+            area.insertBefore(preview, area.firstChild);
+          }
+          preview.src = compressed;
           const icon = area.querySelector('.photo-area-icon');
           const txt = area.querySelector('.photo-area-text');
-          if (icon) icon.textContent = '📷';
-          if (txt) txt.innerHTML = '<strong>Uploading...</strong><span>Please wait</span>';
+          if (icon) icon.style.display = 'none';
+          if (txt) txt.innerHTML = '<strong style="color:#1B2C48;">Uploading...</strong>';
         }
 
         // Upload to Firebase Storage immediately
@@ -1094,37 +1107,33 @@ function handlePhoto(taskId, input) {
         if (firebase) {
           const timestamp = new Date().toISOString().slice(0,10);
           const location = (currentUser && currentUser.location || 'unknown').replace(/[^a-z0-9]/gi, '_');
-          const photoRef = firebase.ref(firebase.storage, `photos/${location}/${timestamp}/${taskId}_${Date.now()}.jpg`);
+          const photoRef = firebase.ref(firebase.storage, 'photos/' + location + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg');
           firebase.uploadString(photoRef, compressed, 'data_url').then(() => {
             return firebase.getDownloadURL(photoRef);
           }).then(url => {
-            // Store URL in taskStates and localStorage
+            // Store URL
             taskStates[taskId].photoUrl = url;
-            taskStates[taskId].photoData = null; // Clear base64 from memory
-            // Save URL to localStorage so it survives refresh
-            try {
-              const photoKey = 'gtpie_photo_' + taskId;
-              localStorage.setItem(photoKey, url);
-            } catch(e) {}
-            // Update UI to show photo preview
-            if (area) {
-              area.style.background = '#EAF4FD';
-              area.style.border = '1.5px solid #7BBDE1';
-              area.style.flexDirection = 'column';
-              area.style.padding = '8px';
-              area.innerHTML = `<img src="${url}" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:6px;">
-                <div style="font-size:11px;color:#1B2C48;font-weight:700;text-align:center;">Photo captured ✓ <span style="font-weight:400;color:#555;">Tap to retake</span></div>
-                <input type="file" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="handlePhoto('${taskId}',this)">`;
+            taskStates[taskId].photoData = null;
+            // Update preview to use Storage URL
+            const area2 = document.getElementById('photo-area-' + taskId);
+            if (area2) {
+              const preview2 = area2.querySelector('.photo-preview');
+              if (preview2) preview2.src = url;
+              const txt2 = area2.querySelector('.photo-area-text');
+              if (txt2) txt2.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
             }
+            // Save URL to localStorage
+            try { localStorage.setItem('gtpie_photo_' + taskId, url); } catch(e) {}
             showToast('✓ Photo uploaded', 'success');
           }).catch(err => {
             console.error('Photo upload error:', err);
-            // Keep photoData in memory as fallback even if upload fails
-            if (area && txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
+            const txt3 = document.querySelector('#photo-area-' + taskId + ' .photo-area-text');
+            if (txt3) txt3.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
             showToast('✓ Photo captured', 'success');
           });
         } else {
-          if (area && txt) txt.innerHTML = '<strong>Photo captured ✓</strong><span>Tap to retake</span>';
+          const txt4 = document.querySelector('#photo-area-' + taskId + ' .photo-area-text');
+          if (txt4) txt4.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
           showToast('✓ Photo captured', 'success');
         }
       };
