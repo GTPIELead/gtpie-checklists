@@ -224,78 +224,67 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
 .mgr-check-late { background: #FEF9EC; color: #9a6500; }
 .mgr-check-missing { background: #FDEDEC; color: #C0392B; }
 </style>
-  <!-- Firebase SDK -->
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    import { getFirestore, collection, addDoc, serverTimestamp, query, where, getDocs, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-    import { getStorage, ref, uploadString, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
-    import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-    try {
-
+  <!-- Firebase SDK (compat version) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDzlwbbZoYDFDHjUe00e6q5eEOASJ0SM9E",
       authDomain: "gtpie-checklists.firebaseapp.com",
       projectId: "gtpie-checklists",
       storageBucket: "gtpie-checklists.firebasestorage.app",
       messagingSenderId: "239795446845",
-      appId: "1:239795446845:web:4679630763d9f0ab9af654",
-      measurementId: "G-VNDRP8VW3N"
+      appId: "1:239795446845:web:4679630763d9f0ab9af654"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
-    const auth = getAuth(app);
+    firebase.initializeApp(firebaseConfig);
+    const _db = firebase.firestore();
+    const _storage = firebase.storage();
+    const _auth = firebase.auth();
 
-    // Sign in anonymously
-    signInAnonymously(auth).catch(err => console.error('Firebase auth error:', err));
+    _auth.signInAnonymously().then(() => {
+      console.log('Firebase ready');
+      window.firebaseReady = true;
+    }).catch(err => {
+      console.error('Firebase auth error:', err);
+      window.firebaseModuleError = err.message;
+    });
 
-    // Upload photo to Storage and return download URL
     window.uploadPhotoToStorage = async function(taskId, dataUrl, location) {
       const timestamp = new Date().toISOString().slice(0,10);
       const loc = (location || 'unknown').replace(/[^a-z0-9]/gi, '_');
-      const photoRef = ref(storage, 'photos/' + loc + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg');
-      await uploadString(photoRef, dataUrl, 'data_url');
-      const url = await getDownloadURL(photoRef);
-      console.log('Uploaded photo for task', taskId, ':', url);
+      const path = 'photos/' + loc + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg';
+      const storageRef = _storage.ref(path);
+      const snapshot = await storageRef.putString(dataUrl, 'data_url');
+      const url = await snapshot.ref.getDownloadURL();
+      console.log('Photo uploaded:', url);
       return url;
     };
 
-    // Save checklist to Firestore
     window.saveToFirestore = async function(payload) {
-      const docRef = await addDoc(collection(db, 'checklists'), {
+      const docRef = await _db.collection('checklists').add({
         ...payload,
-        createdAt: serverTimestamp()
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       console.log('Saved to Firestore:', docRef.id);
       return docRef.id;
     };
 
-    // Load today's submissions for dashboard
     window.loadTodaySubmissions = async function() {
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      today.setHours(0,0,0,0);
       const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999);
-      const q = query(
-        collection(db, 'checklists'),
-        where('createdAt', '>=', Timestamp.fromDate(today)),
-        where('createdAt', '<=', Timestamp.fromDate(todayEnd))
-      );
-      const snapshot = await getDocs(q);
+      todayEnd.setHours(23,59,59,999);
+      const snapshot = await _db.collection('checklists')
+        .where('createdAt', '>=', today)
+        .where('createdAt', '<=', todayEnd)
+        .get();
       const submissions = [];
       snapshot.forEach(doc => submissions.push(doc.data()));
       return submissions;
     };
-
-    // Legacy firebase object for backward compat
-    window._firebase = { db, storage, auth, collection, addDoc, serverTimestamp, ref, uploadString, getDownloadURL };
-    window.firebaseReady = true;
-    console.log('Firebase module loaded successfully');
-    } catch(moduleErr) {
-      window.firebaseModuleError = moduleErr.message;
-      console.error('Firebase module error:', moduleErr);
-    }
   </script>
 </head>
 <body>
