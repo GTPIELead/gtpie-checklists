@@ -230,65 +230,70 @@ body { font-family: 'DM Sans', sans-serif; background: var(--off-white); color: 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDzlwbbZoYDFDHjUe00e6q5eEOASJ0SM9E",
-      authDomain: "gtpie-checklists.firebaseapp.com",
-      projectId: "gtpie-checklists",
-      storageBucket: "gtpie-checklists.firebasestorage.app",
-      messagingSenderId: "239795446845",
-      appId: "1:239795446845:web:4679630763d9f0ab9af654"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const _db = firebase.firestore();
-    const _storage = firebase.storage();
-    const _auth = firebase.auth();
-
-    // Mark Firebase ready immediately - auth not required with open rules
-    window.firebaseReady = true;
-    console.log('Firebase ready');
-    // Sign in anonymously in background for future use
-    _auth.signInAnonymously().catch(err => console.log('Auth note:', err.message));
-
-    window.uploadPhotoToStorage = async function(taskId, dataUrl, location) {
-      const timestamp = new Date().toISOString().slice(0,10);
-      const loc = (location || 'unknown').replace(/[^a-z0-9]/gi, '_');
-      const path = 'photos/' + loc + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg';
-      const storageRef = _storage.ref(path);
-      const snapshot = await storageRef.putString(dataUrl, 'data_url');
-      const url = await snapshot.ref.getDownloadURL();
-      console.log('Photo uploaded:', url);
-      return url;
-    };
-
-    window.saveToFirestore = async function(payload) {
-      try {
-        console.log('Attempting Firestore save, _db:', !!_db, 'firebase:', typeof firebase);
-        const docRef = await _db.collection('checklists').add({
-          ...payload,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        console.log('Saved to Firestore successfully:', docRef.id);
-        return docRef.id;
-      } catch(err) {
-        console.error('Firestore save FAILED:', err.code, err.message);
-        throw err;
+    window.addEventListener('load', function() {
+      if (typeof firebase === 'undefined') {
+        console.error('Firebase CDN failed to load');
+        window.firebaseModuleError = 'Firebase CDN blocked';
+        return;
       }
-    };
+      const firebaseConfig = {
+        apiKey: "AIzaSyDzlwbbZoYDFDHjUe00e6q5eEOASJ0SM9E",
+        authDomain: "gtpie-checklists.firebaseapp.com",
+        projectId: "gtpie-checklists",
+        storageBucket: "gtpie-checklists.firebasestorage.app",
+        messagingSenderId: "239795446845",
+        appId: "1:239795446845:web:4679630763d9f0ab9af654"
+      };
 
-    window.loadTodaySubmissions = async function() {
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const todayEnd = new Date();
-      todayEnd.setHours(23,59,59,999);
-      const snapshot = await _db.collection('checklists')
-        .where('createdAt', '>=', today)
-        .where('createdAt', '<=', todayEnd)
-        .get();
-      const submissions = [];
-      snapshot.forEach(doc => submissions.push(doc.data()));
-      return submissions;
-    };
+      firebase.initializeApp(firebaseConfig);
+      const _db = firebase.firestore();
+      const _storage = firebase.storage();
+      const _auth = firebase.auth();
+
+      window.firebaseReady = true;
+      console.log('Firebase ready');
+      _auth.signInAnonymously().catch(err => console.log('Auth note:', err.message));
+
+      window.uploadPhotoToStorage = async function(taskId, dataUrl, location) {
+        const timestamp = new Date().toISOString().slice(0,10);
+        const loc = (location || 'unknown').replace(/[^a-z0-9]/gi, '_');
+        const path = 'photos/' + loc + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg';
+        const storageRef = _storage.ref(path);
+        const snapshot = await storageRef.putString(dataUrl, 'data_url');
+        const url = await snapshot.ref.getDownloadURL();
+        console.log('Photo uploaded:', url);
+        return url;
+      };
+
+      window.saveToFirestore = async function(payload) {
+        try {
+          console.log('Attempting Firestore save, _db:', !!_db, 'firebase:', typeof firebase);
+          const docRef = await _db.collection('checklists').add({
+            ...payload,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          console.log('Saved to Firestore successfully:', docRef.id);
+          return docRef.id;
+        } catch(err) {
+          console.error('Firestore save FAILED:', err.code, err.message);
+          throw err;
+        }
+      };
+
+      window.loadTodaySubmissions = async function() {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23,59,59,999);
+        const snapshot = await _db.collection('checklists')
+          .where('createdAt', '>=', today)
+          .where('createdAt', '<=', todayEnd)
+          .get();
+        const submissions = [];
+        snapshot.forEach(doc => submissions.push(doc.data()));
+        return submissions;
+      };
+    }); // end window.onload
   </script>
 </head>
 <body>
