@@ -1293,8 +1293,13 @@ async function submitChecklist() {
         const leanPayload = { ...payload };
         delete leanPayload.signature;
         leanPayload.tasks = leanPayload.tasks.map(t => ({ ...t, photoData: null }));
-        await window.saveToFirestore(leanPayload);
-        showToast('Saved to Firebase ✓', 'success');
+        try {
+          await window.saveToFirestore(leanPayload);
+          showToast('Saved to Firebase ✓', 'success');
+        } catch(saveErr) {
+          console.error('Firestore write failed:', saveErr.code, saveErr.message);
+          showToast('DB Error: ' + (saveErr.code || saveErr.message), 'error');
+        }
       } else {
         console.error('Firebase not loaded after 5 seconds');
         showToast('Warning: Could not save to database', 'error');
