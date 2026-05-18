@@ -452,6 +452,7 @@ let checklistStartTime = null;
 let sigCanvas, sigCtx, sigDrawing = false;
 let randomSelections = {};
 let lateReasons = {};
+let pendingUploads = new Set(); // Track in-progress photo uploads
 
 function getTodayKey() { return new Date().toISOString().slice(0,10); }
 function getCompletedKey(id) { const loc = (currentUser&&currentUser.location||'unknown').replace(/[^a-z0-9]/gi,'_'); return `gtpie_done_${getTodayKey()}_${loc}_${id}`; }
@@ -1108,6 +1109,8 @@ function handlePhoto(taskId, input) {
           const timestamp = new Date().toISOString().slice(0,10);
           const location = (currentUser && currentUser.location || 'unknown').replace(/[^a-z0-9]/gi, '_');
           const photoRef = firebase.ref(firebase.storage, 'photos/' + location + '/' + timestamp + '/' + taskId + '_' + Date.now() + '.jpg');
+          const uploadKey = taskId + '_' + Date.now();
+          pendingUploads.add(uploadKey);
           firebase.uploadString(photoRef, compressed, 'data_url').then(() => {
             return firebase.getDownloadURL(photoRef);
           }).then(url => {
@@ -1124,9 +1127,11 @@ function handlePhoto(taskId, input) {
             }
             // Save URL to localStorage
             try { localStorage.setItem('gtpie_photo_' + taskId, url); } catch(e) {}
+            pendingUploads.delete(uploadKey);
             showToast('✓ Photo uploaded', 'success');
           }).catch(err => {
             console.error('Photo upload error:', err);
+            pendingUploads.delete(uploadKey);
             const txt3 = document.querySelector('#photo-area-' + taskId + ' .photo-area-text');
             if (txt3) txt3.innerHTML = '<strong style="color:#1B2C48;">Photo captured ✓</strong><span style="color:#555;font-size:11px;">Tap to retake</span>';
             showToast('✓ Photo captured', 'success');
@@ -1188,6 +1193,18 @@ function hasSig() { return !!signatures[currentChecklistId]; }
 // ── SUBMIT ──
 async function submitChecklist() {
   if (!hasSig()) { showToast('Manager signature required', 'error'); return; }
+  // Wait for any pending photo uploads to complete
+  if (pendingUploads.size > 0) {
+    showToast('Please wait — photos still uploading...', 'error');
+    const btn = document.getElementById('submit-btn');
+    btn.innerHTML = '<span>⏳</span> Waiting for photos...';
+    await new Promise(resolve => {
+      const check = setInterval(() => {
+        if (pendingUploads.size === 0) { clearInterval(check); resolve(); }
+      }, 500);
+      setTimeout(() => { clearInterval(check); resolve(); }, 15000); // 15s timeout
+    });
+  }
   const cl = currentChecklistId==='midday'?MIDDAY_CHECKLIST:FOH_OPEN_CHECKLIST;
   const allTasks = getAllTasks(cl);
   const answered = allTasks.filter(t=>{const s=taskStates[t.id]; return s&&(s.value==='yes'||s.value==='no'||s.value==='check'||s.value==='temp'||s.value==='confirmed');}).length;
