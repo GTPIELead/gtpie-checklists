@@ -21,29 +21,33 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    // Support ?date=YYYY-MM-DD for historical queries
+    let start, end;
+    if (req.query.date) {
+      start = new Date(req.query.date + 'T00:00:00');
+      end = new Date(req.query.date + 'T23:59:59');
+    } else {
+      start = new Date();
+      start.setHours(0, 0, 0, 0);
+      end = new Date();
+      end.setHours(23, 59, 59, 999);
+    }
 
     const snapshot = await db.collection('checklists')
-      .where('createdAt', '>=', Timestamp.fromDate(today))
-      .where('createdAt', '<=', Timestamp.fromDate(todayEnd))
+      .where('createdAt', '>=', Timestamp.fromDate(start))
+      .where('createdAt', '<=', Timestamp.fromDate(end))
       .get();
 
     const submissions = [];
     snapshot.forEach(doc => {
       const data = doc.data();
-      if (data.createdAt && data.createdAt.toDate) {
-        data.createdAt = data.createdAt.toDate().toISOString();
-      }
-      // Convert any other Timestamps
-      if (data.startTime && data.startTime.toDate) data.startTime = data.startTime.toDate().toISOString();
-      if (data.endTime && data.endTime.toDate) data.endTime = data.endTime.toDate().toISOString();
+      if (data.createdAt?.toDate) data.createdAt = data.createdAt.toDate().toISOString();
+      if (data.startTime?.toDate) data.startTime = data.startTime.toDate().toISOString();
+      if (data.endTime?.toDate) data.endTime = data.endTime.toDate().toISOString();
       submissions.push(data);
     });
 
-    console.log('Dashboard: found', submissions.length, 'submissions today');
+    console.log(`Dashboard: ${submissions.length} submissions for ${req.query.date || 'today'}`);
     return res.status(200).json({ submissions });
   } catch (err) {
     console.error('Dashboard error:', err.message);
