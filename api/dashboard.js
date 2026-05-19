@@ -1,5 +1,5 @@
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 
 if (!getApps().length) {
   initializeApp({
@@ -27,8 +27,8 @@ module.exports = async function handler(req, res) {
     todayEnd.setHours(23, 59, 59, 999);
 
     const snapshot = await db.collection('checklists')
-      .where('createdAt', '>=', today)
-      .where('createdAt', '<=', todayEnd)
+      .where('createdAt', '>=', Timestamp.fromDate(today))
+      .where('createdAt', '<=', Timestamp.fromDate(todayEnd))
       .get();
 
     const submissions = [];
@@ -37,9 +37,13 @@ module.exports = async function handler(req, res) {
       if (data.createdAt && data.createdAt.toDate) {
         data.createdAt = data.createdAt.toDate().toISOString();
       }
+      // Convert any other Timestamps
+      if (data.startTime && data.startTime.toDate) data.startTime = data.startTime.toDate().toISOString();
+      if (data.endTime && data.endTime.toDate) data.endTime = data.endTime.toDate().toISOString();
       submissions.push(data);
     });
 
+    console.log('Dashboard: found', submissions.length, 'submissions today');
     return res.status(200).json({ submissions });
   } catch (err) {
     console.error('Dashboard error:', err.message);
