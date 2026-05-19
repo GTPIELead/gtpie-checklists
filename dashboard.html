@@ -9,375 +9,95 @@
   :root {
     --navy: #1B2C48;
     --blue: #7BBDE1;
-    --light-blue: #BBD9EE;
-    --green: #2ECC71;
-    --yellow: #F39C12;
-    --red: #E74C3C;
     --bg: #0D1820;
     --surface: #162130;
     --surface2: #1E2F42;
     --border: rgba(123,189,225,0.15);
     --text: #E8F4FD;
     --text-dim: #7BBDE1;
+    --green: #2ECC71;
+    --yellow: #F39C12;
+    --red: #E74C3C;
     --mono: 'DM Mono', monospace;
     --display: 'Syne', sans-serif;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--mono);
-    min-height: 100vh;
-  }
+  body { background: var(--bg); color: var(--text); font-family: var(--mono); min-height: 100vh; }
 
-  /* PIN SCREEN */
-  #pin-screen {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    background: radial-gradient(ellipse at 50% 0%, rgba(123,189,225,0.08) 0%, transparent 70%);
-  }
-
-  .pin-logo {
-    font-family: var(--display);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--blue);
-    margin-bottom: 8px;
-  }
-
-  .pin-title {
-    font-family: var(--display);
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--text);
-    margin-bottom: 40px;
-  }
-
-  .pin-dots {
-    display: flex;
-    gap: 14px;
-    margin-bottom: 32px;
-  }
-
-  .pin-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 1.5px solid var(--blue);
-    background: transparent;
-    transition: background 0.15s;
-  }
-
+  /* PIN */
+  #pin-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(ellipse at 50% 0%, rgba(123,189,225,0.08) 0%, transparent 70%); }
+  .pin-logo { font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--blue); margin-bottom: 6px; }
+  .pin-title { font-family: var(--display); font-size: 26px; font-weight: 800; color: var(--text); margin-bottom: 36px; }
+  .pin-dots { display: flex; gap: 14px; margin-bottom: 28px; }
+  .pin-dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--blue); background: transparent; transition: background 0.15s; }
   .pin-dot.filled { background: var(--blue); }
-
-  .pin-pad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    width: 220px;
-  }
-
-  .pin-btn {
-    padding: 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--text);
-    font-family: var(--display);
-    font-size: 18px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-
-  .pin-btn:active { transform: scale(0.95); background: var(--surface); }
-  .pin-btn.action { color: var(--blue); font-family: var(--mono); font-size: 13px; }
+  .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 210px; }
+  .pin-btn { padding: 15px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--display); font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.1s; }
+  .pin-btn:active { transform: scale(0.95); }
+  .pin-btn.action { color: var(--blue); font-family: var(--mono); font-size: 12px; }
   .pin-btn.go { background: var(--blue); color: var(--navy); }
+  .pin-error { display: none; margin-top: 14px; color: var(--red); font-size: 12px; letter-spacing: 1px; }
 
-  .pin-error {
-    display: none;
-    margin-top: 16px;
-    color: var(--red);
-    font-size: 12px;
-    letter-spacing: 1px;
-  }
+  /* HEADER */
+  #dashboard { display: none; flex-direction: column; min-height: 100vh; }
+  .dash-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; gap: 12px; flex-wrap: wrap; }
+  .dash-left { display: flex; flex-direction: column; }
+  .dash-brand { font-family: var(--display); font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); }
+  .dash-title { font-family: var(--display); font-size: 15px; font-weight: 800; color: var(--text); }
+  .dash-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .date-picker { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 8px; font-family: var(--mono); font-size: 12px; cursor: pointer; }
+  .btn-refresh { background: var(--blue); color: var(--navy); border: none; padding: 8px 14px; border-radius: 8px; font-family: var(--display); font-size: 12px; font-weight: 700; cursor: pointer; }
+  .btn-exit { background: transparent; color: var(--blue); border: 1px solid var(--border); padding: 8px 14px; border-radius: 8px; font-family: var(--mono); font-size: 12px; cursor: pointer; }
 
-  /* DASHBOARD */
-  #dashboard {
-    display: none;
-    min-height: 100vh;
-    flex-direction: column;
-  }
+  /* SUMMARY */
+  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+  .summary-card { background: var(--surface); padding: 14px 16px; text-align: center; }
+  .summary-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+  .summary-value { font-family: var(--display); font-size: 26px; font-weight: 800; }
+  .good { color: var(--green); } .warn { color: var(--yellow); } .bad { color: var(--red); }
 
-  .dash-header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
+  /* CONTENT */
+  .section-header { padding: 12px 16px 6px; font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+  .locations-grid { padding: 12px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; align-items: start; }
 
-  .dash-brand {
-    font-family: var(--display);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--blue);
-  }
+  /* CARDS */
+  .location-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; border-left: 3px solid var(--border); }
+  .location-card.all-good { border-left-color: var(--green); }
+  .location-card.has-flags { border-left-color: var(--red); }
+  .location-card.partial { border-left-color: var(--yellow); }
+  .location-name { font-family: var(--display); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .check-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; flex-wrap: wrap; }
+  .check-pill { font-size: 10px; font-weight: 500; padding: 2px 9px; border-radius: 20px; letter-spacing: 0.3px; white-space: nowrap; }
+  .check-done { background: rgba(46,204,113,0.12); color: #2ECC71; }
+  .check-late { background: rgba(243,156,18,0.12); color: #F39C12; }
+  .check-missing { background: rgba(231,76,60,0.12); color: #E74C3C; }
+  .check-info { font-size: 10px; color: var(--text-dim); }
 
-  .dash-title {
-    font-family: var(--display);
-    font-size: 16px;
-    font-weight: 800;
-    color: var(--text);
-  }
-
-  .dash-actions { display: flex; gap: 8px; }
-
-  .btn-refresh {
-    background: var(--blue);
-    color: var(--navy);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-family: var(--display);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.2s;
-  }
-
-  .btn-refresh:hover { opacity: 0.85; }
-
-  .btn-exit {
-    background: transparent;
-    color: var(--blue);
-    border: 1px solid var(--border);
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-family: var(--mono);
-    font-size: 12px;
-    cursor: pointer;
-  }
-
-  .dash-date {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.5px;
-  }
-
-  /* SUMMARY ROW */
-  .summary-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .summary-card {
-    background: var(--surface);
-    padding: 16px 20px;
-    text-align: center;
-  }
-
-  .summary-label {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
-
-  .summary-value {
-    font-family: var(--display);
-    font-size: 28px;
-    font-weight: 800;
-  }
-
-  .summary-value.good { color: var(--green); }
-  .summary-value.warn { color: var(--yellow); }
-  .summary-value.bad { color: var(--red); }
-
-  /* LOCATIONS GRID */
-  .locations-grid {
-    padding: 16px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 12px;
-  }
-
-  .location-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 16px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .location-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 3px;
-    height: 100%;
-    background: var(--border);
-  }
-
-  .location-card.all-good::before { background: var(--green); }
-  .location-card.has-flags::before { background: var(--red); }
-  .location-card.partial::before { background: var(--yellow); }
-
-  .location-name {
-    font-family: var(--display);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 10px;
-  }
-
-  .check-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  .check-pill {
-    font-size: 10px;
-    font-weight: 500;
-    padding: 3px 10px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
-    font-family: var(--mono);
-  }
-
-  .check-done { background: rgba(46,204,113,0.15); color: #2ECC71; }
-  .check-late { background: rgba(243,156,18,0.15); color: #F39C12; }
-  .check-missing { background: rgba(231,76,60,0.15); color: #E74C3C; }
-
-  .check-info {
-    font-size: 10px;
-    color: var(--text-dim);
-    font-family: var(--mono);
-  }
-
-  .flag-section {
-    margin-top: 8px;
-    padding: 8px 10px;
-    background: rgba(231,76,60,0.08);
-    border: 1px solid rgba(231,76,60,0.2);
-    border-radius: 8px;
-  }
-
-  .flag-label {
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--red);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .flag-item {
-    font-size: 11px;
-    color: rgba(231,76,60,0.8);
-    margin-bottom: 2px;
-    line-height: 1.4;
-  }
-
+  .flag-box { margin-top: 7px; padding: 7px 9px; background: rgba(231,76,60,0.07); border: 1px solid rgba(231,76,60,0.18); border-radius: 7px; }
+  .flag-box-label { font-size: 9px; font-weight: 500; color: var(--red); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .flag-item { font-size: 11px; color: rgba(231,76,60,0.85); margin-bottom: 2px; line-height: 1.4; }
   .flag-item strong { color: var(--text); }
 
-  .late-reason {
-    margin-top: 6px;
-    padding: 6px 10px;
-    background: rgba(243,156,18,0.08);
-    border: 1px solid rgba(243,156,18,0.2);
-    border-radius: 8px;
-    font-size: 11px;
-    color: rgba(243,156,18,0.9);
-  }
+  .late-box { margin-top: 6px; padding: 6px 9px; background: rgba(243,156,18,0.07); border: 1px solid rgba(243,156,18,0.18); border-radius: 7px; font-size: 11px; color: rgba(243,156,18,0.9); line-height: 1.4; }
 
-  .photo-section {
-    margin-top: 8px;
-  }
+  .photo-section { margin-top: 8px; }
+  .photo-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+  .photo-thumbs { display: flex; gap: 5px; flex-wrap: wrap; }
+  .photo-thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 5px; border: 1px solid var(--border); cursor: pointer; transition: transform 0.15s; }
+  .photo-thumb:hover { transform: scale(1.08); }
 
-  .photo-label {
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
+  /* PENDING */
+  .pending-grid { padding: 8px 16px 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .pending-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 12px; color: var(--text-dim); border-left: 3px solid rgba(231,76,60,0.3); }
 
-  .photo-thumbs {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .photo-thumb {
-    width: 56px;
-    height: 56px;
-    object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: transform 0.15s;
-  }
-
-  .photo-thumb:hover { transform: scale(1.05); }
-
-  /* LOADING */
-  .loading-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px;
-    color: var(--text-dim);
-    font-size: 13px;
-    gap: 12px;
-  }
-
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--border);
-    border-top-color: var(--blue);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
+  .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--text-dim); font-size: 13px; gap: 12px; }
+  .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  .last-updated {
-    font-size: 10px;
-    color: var(--text-dim);
-    text-align: center;
-    padding: 12px;
-    letter-spacing: 0.5px;
-  }
+  .last-updated { font-size: 10px; color: var(--text-dim); text-align: center; padding: 10px; letter-spacing: 0.5px; }
 </style>
 </head>
 <body>
 
-<!-- PIN SCREEN -->
 <div id="pin-screen">
   <div class="pin-logo">Grand Traverse Pie Co.</div>
   <div class="pin-title">Manager Dashboard</div>
@@ -404,44 +124,28 @@
   <div class="pin-error" id="pin-error">Incorrect PIN</div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard">
   <div class="dash-header">
-    <div>
-      <div class="dash-brand">GT Pie Daily Operations</div>
+    <div class="dash-left">
+      <div class="dash-brand">Grand Traverse Pie Co.</div>
       <div class="dash-title">Manager Dashboard</div>
     </div>
-    <div class="dash-actions">
-      <div class="dash-date" id="dash-date"></div>
+    <div class="dash-right">
+      <input type="date" class="date-picker" id="date-picker" onchange="loadData()">
       <button class="btn-refresh" onclick="loadData()">↻ Refresh</button>
       <button class="btn-exit" onclick="showPin()">Exit</button>
     </div>
   </div>
 
   <div class="summary-row">
-    <div class="summary-card">
-      <div class="summary-label">Complete</div>
-      <div class="summary-value" id="sum-complete">--</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-label">Temp Flags</div>
-      <div class="summary-value" id="sum-flags">--</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-label">Corrective</div>
-      <div class="summary-value" id="sum-corrective">--</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-label">Late</div>
-      <div class="summary-value" id="sum-late">--</div>
-    </div>
+    <div class="summary-card"><div class="summary-label">Complete</div><div class="summary-value" id="sum-complete">--</div></div>
+    <div class="summary-card"><div class="summary-label">Temp Flags</div><div class="summary-value" id="sum-flags">--</div></div>
+    <div class="summary-card"><div class="summary-label">Corrective</div><div class="summary-value" id="sum-corrective">--</div></div>
+    <div class="summary-card"><div class="summary-label">Late</div><div class="summary-value" id="sum-late">--</div></div>
   </div>
 
-  <div class="locations-grid" id="locations-grid">
-    <div class="loading-state">
-      <div class="spinner"></div>
-      Loading today's data...
-    </div>
+  <div id="main-content">
+    <div class="loading-state"><div class="spinner"></div>Loading...</div>
   </div>
 
   <div class="last-updated" id="last-updated"></div>
@@ -449,7 +153,7 @@
 
 <script>
 const PIN = '7743';
-const LOCATIONS = [
+const ALL_LOCATIONS = [
   'Ann Arbor','Brighton','East Lansing','Midland','Norton Shores',
   'Okemos','Plymouth','Portage','Terre Haute, IN',
   'Traverse City - Front St','Traverse City - Park St'
@@ -479,9 +183,14 @@ function updateDots() {
 function pinSubmit() {
   if (pinEntry === PIN) {
     document.getElementById('pin-screen').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'flex';
-    document.getElementById('dashboard').style.flexDirection = 'column';
-    document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+    const dash = document.getElementById('dashboard');
+    dash.style.display = 'flex';
+    // Set date picker to today
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth()+1).padStart(2,'0');
+    const dd = String(today.getDate()).padStart(2,'0');
+    document.getElementById('date-picker').value = `${yyyy}-${mm}-${dd}`;
     loadData();
   } else {
     pinEntry = '';
@@ -499,29 +208,35 @@ function showPin() {
 }
 
 async function loadData() {
-  const grid = document.getElementById('locations-grid');
-  grid.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading today\'s data...</div>';
+  const content = document.getElementById('main-content');
+  content.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading...</div>';
+
+  const selectedDate = document.getElementById('date-picker').value;
+  const url = selectedDate ? `/api/dashboard?date=${selectedDate}` : '/api/dashboard';
 
   try {
-    const res = await fetch('/api/dashboard');
+    const res = await fetch(url);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to load');
-    renderDashboard(data.submissions || []);
-    document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    renderDashboard(data.submissions || [], selectedDate);
+    document.getElementById('last-updated').textContent =
+      'Showing: ' + new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) +
+      ' · Updated: ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
   } catch(err) {
-    grid.innerHTML = '<div class="loading-state">Error: ' + err.message + '<br><br><button class="btn-refresh" onclick="loadData()">Retry</button></div>';
+    content.innerHTML = '<div class="loading-state">Error: ' + err.message + '</div>';
   }
 }
 
-function renderDashboard(submissions) {
+function renderDashboard(submissions, selectedDate) {
   const locationData = {};
-  LOCATIONS.forEach(loc => {
-    locationData[loc] = { opening: null, midday: null, tempFlags: [], corrective: [], photos: [], lateReasons: [] };
+  ALL_LOCATIONS.forEach(loc => {
+    locationData[loc] = { opening: null, midday: null, tempFlags: [], corrective: [], photos: [], lateReasons: [], hasData: false };
   });
 
   submissions.forEach(data => {
     const loc = data.location;
-    if (!locationData[loc]) locationData[loc] = { opening: null, midday: null, tempFlags: [], corrective: [], photos: [], lateReasons: [] };
+    if (!locationData[loc]) locationData[loc] = { opening: null, midday: null, tempFlags: [], corrective: [], photos: [], lateReasons: [], hasData: false };
+    locationData[loc].hasData = true;
     const isOpening = (data.checklist||'').toLowerCase().includes('opening');
     const isMidday = (data.checklist||'').toLowerCase().includes('midday');
     const startTime = data.startTime ? new Date(data.startTime) : null;
@@ -540,7 +255,6 @@ function renderDashboard(submissions) {
     if (isOpening) locationData[loc].opening = sub;
     if (isMidday) locationData[loc].midday = sub;
     if (data.lateReason) locationData[loc].lateReasons.push({ checklist: isOpening?'Opening':'Midday', reason: data.lateReason });
-
     (data.tasks||[]).forEach(t => {
       if (t.tempAlert) locationData[loc].tempFlags.push({ name: t.name, temp: t.temp });
       if (t.value === 'no' && t.note) locationData[loc].corrective.push({ task: t.name, note: t.note });
@@ -548,81 +262,86 @@ function renderDashboard(submissions) {
     });
   });
 
-  // Summary
-  const completeBoth = LOCATIONS.filter(l => locationData[l].opening && locationData[l].midday).length;
+  // Split into active and pending
+  const active = ALL_LOCATIONS.filter(l => locationData[l].hasData);
+  const pending = ALL_LOCATIONS.filter(l => !locationData[l].hasData);
+
+  // Summary stats
+  const completeBoth = active.filter(l => locationData[l].opening && locationData[l].midday).length;
   const totalFlags = Object.values(locationData).reduce((s,l) => s + l.tempFlags.length, 0);
   const totalCorrective = Object.values(locationData).reduce((s,l) => s + l.corrective.length, 0);
-  const totalLate = Object.values(locationData).reduce((s,l) => s + (l.opening&&!l.opening.onTime?1:0) + (l.midday&&!l.midday.onTime?1:0), 0);
+  const totalLate = Object.values(locationData).reduce((s,l) =>
+    s + (l.opening&&!l.opening.onTime?1:0) + (l.midday&&!l.midday.onTime?1:0), 0);
 
-  const sumComplete = document.getElementById('sum-complete');
-  sumComplete.textContent = completeBoth + '/11';
-  sumComplete.className = 'summary-value ' + (completeBoth === 11 ? 'good' : completeBoth >= 8 ? 'warn' : 'bad');
+  const setVal = (id, val, cls) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.className = 'summary-value ' + cls;
+  };
+  setVal('sum-complete', completeBoth + '/' + active.length, completeBoth === active.length && active.length > 0 ? 'good' : completeBoth > 0 ? 'warn' : 'bad');
+  setVal('sum-flags', totalFlags, totalFlags === 0 ? 'good' : 'bad');
+  setVal('sum-corrective', totalCorrective, totalCorrective === 0 ? 'good' : 'warn');
+  setVal('sum-late', totalLate, totalLate === 0 ? 'good' : 'warn');
 
-  const sumFlags = document.getElementById('sum-flags');
-  sumFlags.textContent = totalFlags;
-  sumFlags.className = 'summary-value ' + (totalFlags === 0 ? 'good' : 'bad');
+  function pill(sub, label) {
+    if (!sub) return `<span class="check-pill check-missing">${label} Missing</span>`;
+    return `<span class="check-pill ${sub.onTime?'check-done':'check-late'}">${label} ${sub.onTime?'✓':'· Late'}</span>`;
+  }
 
-  const sumCorrective = document.getElementById('sum-corrective');
-  sumCorrective.textContent = totalCorrective;
-  sumCorrective.className = 'summary-value ' + (totalCorrective === 0 ? 'good' : 'warn');
-
-  const sumLate = document.getElementById('sum-late');
-  sumLate.textContent = totalLate;
-  sumLate.className = 'summary-value ' + (totalLate === 0 ? 'good' : 'warn');
-
-  // Location cards
-  const grid = document.getElementById('locations-grid');
-  grid.innerHTML = LOCATIONS.map(loc => {
+  function buildCard(loc) {
     const d = locationData[loc];
     const allGood = d.opening && d.midday && d.opening.onTime && d.midday.onTime && !d.tempFlags.length && !d.corrective.length;
     const hasFlags = d.tempFlags.length > 0 || d.corrective.length > 0;
-    const cardClass = allGood ? 'all-good' : hasFlags ? 'has-flags' : (d.opening || d.midday) ? 'partial' : '';
+    const cls = allGood ? 'all-good' : hasFlags ? 'has-flags' : 'partial';
 
-    function pill(sub, label) {
-      if (!sub) return `<span class="check-pill check-missing">${label} Missing</span>`;
-      return `<span class="check-pill ${sub.onTime ? 'check-done' : 'check-late'}">${label} ${sub.onTime ? '✓' : '· Late'}</span>`;
-    }
+    const flagHtml = d.tempFlags.length > 0 ? `<div class="flag-box">
+      <div class="flag-box-label">Temp Flags</div>
+      ${d.tempFlags.map(f=>`<div class="flag-item"><strong>${f.name}:</strong> ${f.temp}°F</div>`).join('')}
+    </div>` : '';
 
-    function info(sub) {
-      if (!sub) return '';
-      return `<span class="check-info">${sub.employee} · ${sub.time}</span>`;
-    }
+    const correctiveHtml = d.corrective.length > 0 ? `<div class="flag-box">
+      <div class="flag-box-label">Corrective Actions</div>
+      ${d.corrective.map(c=>`<div class="flag-item"><strong>${c.task}:</strong> ${c.note}</div>`).join('')}
+    </div>` : '';
 
-    const flagHtml = d.tempFlags.length > 0 ? `
-      <div class="flag-section">
-        <div class="flag-label">Temp Flags</div>
-        ${d.tempFlags.map(f => `<div class="flag-item"><strong>${f.name}:</strong> ${f.temp}°F</div>`).join('')}
-      </div>` : '';
+    const lateHtml = d.lateReasons.length > 0 ? `<div class="late-box">
+      ${d.lateReasons.map(r=>`<strong>${r.checklist}:</strong> ${r.reason}`).join('<br>')}
+    </div>` : '';
 
-    const correctiveHtml = d.corrective.length > 0 ? `
-      <div class="flag-section">
-        <div class="flag-label">Corrective Actions</div>
-        ${d.corrective.map(c => `<div class="flag-item"><strong>${c.task}:</strong> ${c.note}</div>`).join('')}
-      </div>` : '';
+    const photoHtml = d.photos.length > 0 ? `<div class="photo-section">
+      <div class="photo-label">Photos (${d.photos.length})</div>
+      <div class="photo-thumbs">
+        ${d.photos.map(p=>`<a href="${p.url}" target="_blank"><img class="photo-thumb" src="${p.url}" title="${p.task}" loading="lazy"></a>`).join('')}
+      </div>
+    </div>` : '';
 
-    const lateHtml = d.lateReasons.length > 0 ? `
-      <div class="late-reason">
-        ${d.lateReasons.map(r => `<strong>${r.checklist}:</strong> ${r.reason}`).join('<br>')}
-      </div>` : '';
-
-    const photoHtml = d.photos.length > 0 ? `
-      <div class="photo-section">
-        <div class="photo-label">Photos (${d.photos.length})</div>
-        <div class="photo-thumbs">
-          ${d.photos.map(p => `<a href="${p.url}" target="_blank"><img class="photo-thumb" src="${p.url}" title="${p.task}" loading="lazy"></a>`).join('')}
-        </div>
-      </div>` : '';
-
-    return `<div class="location-card ${cardClass}">
+    return `<div class="location-card ${cls}">
       <div class="location-name">${loc}</div>
-      <div class="check-row">${pill(d.opening,'Opening')} ${info(d.opening)}</div>
-      <div class="check-row">${pill(d.midday,'Midday')} ${info(d.midday)}</div>
-      ${flagHtml}
-      ${correctiveHtml}
-      ${lateHtml}
-      ${photoHtml}
+      <div class="check-row">${pill(d.opening,'Opening')} ${d.opening?`<span class="check-info">${d.opening.employee} · ${d.opening.time}</span>`:''}</div>
+      <div class="check-row">${pill(d.midday,'Midday')} ${d.midday?`<span class="check-info">${d.midday.employee} · ${d.midday.time}</span>`:''}</div>
+      ${flagHtml}${correctiveHtml}${lateHtml}${photoHtml}
     </div>`;
-  }).join('');
+  }
+
+  let html = '';
+
+  if (active.length > 0) {
+    html += `<div class="section-header">Submitted (${active.length})</div>
+    <div class="locations-grid">${active.map(buildCard).join('')}</div>`;
+  }
+
+  if (pending.length > 0) {
+    html += `<div class="section-header">Not Yet Submitted (${pending.length})</div>
+    <div class="pending-grid">
+      ${pending.map(loc=>`<div class="pending-card">${loc}</div>`).join('')}
+    </div>`;
+  }
+
+  if (active.length === 0 && pending.length === 0) {
+    html = '<div class="loading-state">No submissions found for this date.</div>';
+  }
+
+  document.getElementById('main-content').innerHTML = html;
 }
 </script>
 </body>
