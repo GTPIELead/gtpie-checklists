@@ -220,11 +220,19 @@ async function loadData() {
     
     // Filter by selected date client-side using Eastern timezone
     const all = data.submissions || [];
+    console.log('Total submissions from API:', all.length);
+    console.log('Selected date:', selectedDate);
+    if (all.length > 0) {
+      const sample = all[0];
+      const sampleDate = new Date(sample.createdAt).toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
+      console.log('Sample createdAt:', sample.createdAt, '-> Eastern date:', sampleDate, '-> location:', sample.location);
+    }
     const filtered = all.filter(s => {
       if (!s.createdAt) return false;
       const subDate = new Date(s.createdAt).toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
       return subDate === selectedDate;
     });
+    console.log('Filtered submissions:', filtered.length);
 
     renderDashboard(filtered, selectedDate);
     document.getElementById('last-updated').textContent =
