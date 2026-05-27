@@ -212,13 +212,21 @@ async function loadData() {
   content.innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading...</div>';
 
   const selectedDate = document.getElementById('date-picker').value;
-  const url = selectedDate ? `/api/dashboard?date=${selectedDate}` : '/api/dashboard';
 
   try {
-    const res = await fetch(url);
+    const res = await fetch('/api/dashboard');
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to load');
-    renderDashboard(data.submissions || [], selectedDate);
+    
+    // Filter by selected date client-side using Eastern timezone
+    const all = data.submissions || [];
+    const filtered = all.filter(s => {
+      if (!s.createdAt) return false;
+      const subDate = new Date(s.createdAt).toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
+      return subDate === selectedDate;
+    });
+
+    renderDashboard(filtered, selectedDate);
     document.getElementById('last-updated').textContent =
       'Showing: ' + new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) +
       ' · Updated: ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
