@@ -335,6 +335,46 @@ const BOTS_ACTIONS = [
   { title:"Be Neat and Clean", standard:"Uniform is complete, clean, and fits properly. Personal hygiene is professional. You represent GT Pie from the moment you walk in.", lookFor:["Full correct uniform, clean and pressed","Hair neat and restrained if required","Nails clean and appropriate","Overall appearance is professional"] }
 ];
 
+const DAILY_PHOTO_TASKS = [
+  { id:"pt1",  name:"Employee in Full Uniform",            desc:"Take a photo of a team member in complete GT Pie uniform including name tag, clean shirt, and apron." },
+  { id:"pt2",  name:"A-Frame Sign",                        desc:"Take a photo of your A-Frame sign placed on the sidewalk. It should be visible, upright, and displaying current messaging." },
+  { id:"pt3",  name:"Trash/Recycling Area",                desc:"Take a photo of the trash and recycling area. It should be clean, organized, and lids closed." },
+  { id:"pt4",  name:"Dining Room Sanitizer Bucket",        desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5",  name:"Customer Service Sanitizer Bucket",   desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6",  name:"Food Service Sanitizer Bucket",       desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt7",  name:"Ice Cream Freezer",                   desc:"Take a photo of the ice cream freezer. It should be clean, stocked with vanilla, and free of ice buildup." },
+  { id:"pt8",  name:"Walk-In Cooler Organization",         desc:"Take a photo of the walk-in cooler interior. Product should be organized, labeled, and stored properly off the floor." },
+  { id:"pt9",  name:"Freezer Organization",                desc:"Take a photo of the freezer interior. Product should be organized, labeled, dated, and stored properly." },
+  { id:"pt10", name:"Bake/Load List",                      desc:"Take a photo of today's bake and load list. It should be filled out, posted, and visible to the team." },
+  { id:"pt11", name:"Dining Room",                         desc:"Take a photo of the dining room. Tables should be clean, chairs pushed in, and the space guest-ready." },
+  { id:"pt12", name:"HR Partner Poster",                   desc:"Take a photo of the HR Partner poster. It should be posted in a visible location and current." },
+  { id:"pt13", name:"ServSafe Manager Certification",      desc:"Take a photo of the current ServSafe Manager Certification. It should be posted and not expired." },
+  { id:"pt14", name:"Coffee Station",                      desc:"Take a photo of the coffee station setup. It should be clean, stocked, and ready for service." },
+  { id:"pt15", name:"Front Door",                          desc:"Take a photo of the front door area inside and out. Glass should be clean and free of smudges and fingerprints." },
+  { id:"pt16", name:"Pie Slice Holding Shelves",           desc:"Take a photo of the pie slice holding shelves. Slices should be properly labeled." },
+  { id:"pt17", name:"Women's Room Toilet",                 desc:"Take a photo of the women's restroom toilet. It should be clean with no staining or buildup." },
+  { id:"pt18", name:"Women's Room Hand Sink",              desc:"Take a photo of the women's restroom hand sink. It should be clean, stocked with soap and paper towels." },
+  { id:"pt19", name:"Men's Room Toilet",                   desc:"Take a photo of the men's restroom toilet. It should be clean with no staining or buildup." },
+  { id:"pt20", name:"Men's Room Hand Sink",                desc:"Take a photo of the men's restroom hand sink. It should be clean, stocked with soap and paper towels." },
+  { id:"pt21", name:"Dry Storage Organization",            desc:"Take a photo of the dry storage area. Product should be organized, labeled, off the floor, and FIFO rotated." },
+  { id:"pt22", name:"Patio",                               desc:"Take a photo of the patio. Tables and chairs should be clean, arranged neatly, and ready for guests." },
+  { id:"pt23", name:"Toast POS — Customer Service Side",   desc:"Take a photo of the Toast POS terminal on the customer service side. Screen should be clean and functioning." },
+  { id:"pt24", name:"Toast POS — Customer Side",           desc:"Take a photo of the Toast POS terminal on the customer-facing side. Screen should be clean and functioning." },
+  { id:"pt25", name:"Sandwich Cooler Product Levels",      desc:"Take a top-down photo of the sandwich cooler pans. Product should not exceed the pan fill line. Overfilling puts product in the temperature danger zone." },
+  { id:"pt26", name:"Salad Cooler Product Levels",         desc:"Take a top-down photo of the salad cooler pans. Product should not exceed the pan fill line. Overfilling puts product in the temperature danger zone." }
+];
+
+// Get daily photo task seeded by date — AM and PM get different tasks
+function getDailyPhotoTask(shift) {
+  const today = new Date().toISOString().slice(0,10);
+  let seed = 0;
+  for (let c of today) seed += c.charCodeAt(0);
+  const amIndex = seed % DAILY_PHOTO_TASKS.length;
+  const pmIndex = (seed + 13) % DAILY_PHOTO_TASKS.length; // offset so AM and PM differ
+  return shift === 'am' ? DAILY_PHOTO_TASKS[amIndex] : DAILY_PHOTO_TASKS[pmIndex];
+}
+
+
 // Get daily BOTS action — same all day, changes at midnight
 function getDailyBOTS() {
   const today = new Date().toISOString().slice(0,10);
@@ -402,13 +442,6 @@ const FOH_OPEN_CHECKLIST = {
         { id:"focus1", name:"BOTS_FOCUS", desc:"", type:"bots-focus" }
       ]
     },
-    {
-      name: "Daily Photo Tasks",
-      tasks: [
-        { id:"photo1", name:"Employee in Uniform", desc:"Take a photo of a team member in full GT Pie uniform", type:"yn-photo" },
-        { id:"photo2", name:"Patio", desc:"Take a photo of your patio setup", type:"yn-photo" }
-      ]
-    }
   ]
 };
 
@@ -449,12 +482,6 @@ const MIDDAY_CHECKLIST = {
         { id:"mfocus1", name:"BOTS_FOCUS", desc:"", type:"bots-focus" }
       ]
     },
-    {
-      name: "Daily Photo Tasks",
-      tasks: [
-        { id:"mphoto1", name:"Dumpster Area", desc:"Take a photo of your dumpster and surrounding area", type:"yn-photo" }
-      ]
-    }
   ]
 };
 
@@ -593,7 +620,23 @@ function showDashboard() {
 }
 
 function getAllTasks(cl) {
-  return (cl.sections||[]).flatMap(s => s.tasks);
+  const isAM = cl.label && cl.label.toLowerCase().includes('opening');
+  const dailyPhotoTask = getDailyPhotoTask(isAM ? 'am' : 'pm');
+  const dynamicTask = { 
+    id: isAM ? "daily_photo_am" : "daily_photo_pm",
+    name: dailyPhotoTask.name,
+    desc: dailyPhotoTask.desc,
+    type: "yn-photo"
+  };
+  const allTasks = (cl.sections||[]).flatMap(s => s.tasks);
+  // Insert dynamic photo task before bots-focus
+  const botsIdx = allTasks.findIndex(t => t.type === 'bots-focus');
+  if (botsIdx > -1) {
+    allTasks.splice(botsIdx, 0, dynamicTask);
+  } else {
+    allTasks.push(dynamicTask);
+  }
+  return allTasks;
 }
 
 function updateDashboardCards() {
@@ -696,8 +739,32 @@ function renderTasks(cl) {
   // Webhook configured - no banner needed
 
   const bots = getDailyBOTS();
+  const isAM = cl.label && cl.label.toLowerCase().includes('opening');
+  const dailyPhotoTask = getDailyPhotoTask(isAM ? 'am' : 'pm');
+  // Build dynamic photo task section to inject before Daily Focus
+  const dynamicPhotoSection = {
+    name: "Daily Photo Task",
+    tasks: [{ 
+      id: isAM ? "daily_photo_am" : "daily_photo_pm",
+      name: dailyPhotoTask.name,
+      desc: dailyPhotoTask.desc,
+      type: "yn-photo"
+    }]
+  };
 
-  cl.sections.forEach(section => {
+  // Insert dynamic photo section before Daily Focus
+  const sectionsWithPhoto = [];
+  let photoInserted = false;
+  cl.sections.forEach(s => {
+    if (s.name === "Daily Focus" && !photoInserted) {
+      sectionsWithPhoto.push(dynamicPhotoSection);
+      photoInserted = true;
+    }
+    sectionsWithPhoto.push(s);
+  });
+  if (!photoInserted) sectionsWithPhoto.push(dynamicPhotoSection);
+
+  sectionsWithPhoto.forEach(section => {
     html += `<div class="task-section"><div class="task-section-header">${section.name}</div>`;
     section.tasks.forEach(task => {
       const state = taskStates[task.id] || {};
