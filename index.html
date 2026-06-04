@@ -374,6 +374,26 @@ function getDailyPhotoTask(shift) {
 }
 
 
+// Location-specific schedule rules
+function getOpeningCutoff(location) {
+  const dow = new Date().getDay(); // 0=Sun, 6=Sat
+  const isWeekend = dow === 0 || dow === 6;
+  // Okemos opens at 10AM on weekends
+  if (location && location.includes('Okemos') && isWeekend) return 10;
+  return 9; // Default 9AM for everyone else
+}
+
+function showMiddayChecklist(location) {
+  const dow = new Date().getDay(); // 0=Sunday
+  const isSunday = dow === 0;
+  // Front St and Park St close at 3PM on Sundays — no midday needed
+  if (isSunday && location && (location.includes('Front St') || location.includes('Park St'))) {
+    return false;
+  }
+  return true;
+}
+
+
 // Get daily BOTS action — same all day, changes at midnight
 function getDailyBOTS() {
   const today = new Date().toISOString().slice(0,10);
@@ -607,9 +627,12 @@ function showDashboard() {
   const alertEl = document.getElementById('late-alert');
   const openingDone = isCompleted('foh-open');
   const middayDone = isCompleted('midday');
+  const location = currentUser && currentUser.location || '';
+  const openingCutoff = getOpeningCutoff(location);
+  const showMidday = showMiddayChecklist(location);
   const messages = [];
-  if (!openingDone && timeDecimal >= 9) messages.push('Opening Check is past due — should be completed by 9:00 AM');
-  if (!middayDone && timeDecimal >= 15) messages.push('Midday Check is past due — should be completed by 3:00 PM');
+  if (!openingDone && timeDecimal >= openingCutoff) messages.push(`Opening Check is past due — should be completed by ${openingCutoff}:00 AM`);
+  if (showMidday && !middayDone && timeDecimal >= 15) messages.push('Midday Check is past due — should be completed by 3:00 PM');
   if (messages.length > 0) {
     alertEl.textContent = '⚠ ' + messages.join(' · ');
     alertEl.style.display = 'block';
@@ -639,9 +662,10 @@ function getAllTasks(cl) {
 }
 
 function updateDashboardCards() {
+  const location = currentUser && currentUser.location || '';
   const cards = {
     'foh-open': FOH_OPEN_CHECKLIST,
-    'midday': MIDDAY_CHECKLIST
+    ...(showMiddayChecklist(location) ? { 'midday': MIDDAY_CHECKLIST } : {})
   };
   let completedCount = 0;
   Object.entries(cards).forEach(([id, cl]) => {
@@ -699,10 +723,12 @@ function openChecklist(id) {
   const hr = now.getHours();
   const min = now.getMinutes();
   const timeDecimal = hr + min/60;
-  const isOpeningLate = id === 'foh-open' && timeDecimal >= 9 && !isCompleted(id);
+  const loc = currentUser && currentUser.location || '';
+  const openCutoff = getOpeningCutoff(loc);
+  const isOpeningLate = id === 'foh-open' && timeDecimal >= openCutoff && !isCompleted(id);
   const isMiddayLate = id === 'midday' && timeDecimal >= 15 && !isCompleted(id);
   if ((isOpeningLate || isMiddayLate) && !lateReasons[id]) {
-    showLateReasonModal(id, isOpeningLate ? '9:00 AM' : '3:00 PM');
+    showLateReasonModal(id, isOpeningLate ? `${openCutoff}:00 AM` : '3:00 PM');
     return;
   }
   currentChecklistId = id;
@@ -1589,6 +1615,7 @@ function renderDashboard(submissions) {
     <div class="form-group"><label>Location</label><select id="location-select"><option value="">Select your location...</option><option value="Ann Arbor">Ann Arbor</option><option value="Brighton">Brighton</option><option value="East Lansing">East Lansing</option><option value="Midland">Midland</option><option value="Norton Shores">Norton Shores</option><option value="Okemos">Okemos</option><option value="Plymouth">Plymouth</option><option value="Portage">Portage</option><option value="Terre Haute, IN">Terre Haute, IN</option><option value="Traverse City – Front St">Traverse City – Front St</option><option value="Traverse City – Park St">Traverse City – Park St</option></select></div>
     <button class="btn-primary" onclick="handleLogin()">Start Checklists →</button>
       <button onclick="showManagerDashboard()" style="background:none;border:none;color:#7BBDE1;font-size:12px;margin-top:8px;cursor:pointer;text-decoration:underline;">Manager Dashboard</button>
+  <div style="margin-top:16px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:1px;">v1.2 &middot; June 2026</div>
   </div>
 </div>
 
