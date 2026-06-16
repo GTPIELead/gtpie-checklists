@@ -336,41 +336,94 @@ const BOTS_ACTIONS = [
 ];
 
 const DAILY_PHOTO_TASKS = [
-  { id:"pt2",  name:"A-Frame Sign",                        desc:"Take a photo of your A-Frame sign placed on the sidewalk. It should be visible, upright, and displaying current messaging." },
-  { id:"pt3",  name:"Trash/Recycling Area",                desc:"Take a photo of the trash and recycling area. It should be clean, organized, and lids closed." },
-  { id:"pt4",  name:"Dining Room Sanitizer Bucket",        desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
-  { id:"pt5",  name:"Customer Service Sanitizer Bucket",   desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
-  { id:"pt6",  name:"Food Service Sanitizer Bucket",       desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
-  { id:"pt7",  name:"Ice Cream Freezer",                   desc:"Take a photo of the ice cream freezer. It should be clean, stocked with vanilla, and free of ice buildup." },
-  { id:"pt8",  name:"Walk-In Cooler Organization",         desc:"Take a photo of the walk-in cooler interior. Product should be organized, labeled, and stored properly off the floor." },
-  { id:"pt9",  name:"Freezer Organization",                desc:"Take a photo of the freezer interior. Product should be organized, labeled, dated, and stored properly." },
-  { id:"pt10", name:"Bake/Load List",                      desc:"Take a photo of today's bake and load list. It should be filled out, posted, and visible to the team." },
-  { id:"pt11", name:"Dining Room",                         desc:"Take a photo of the dining room. Tables should be clean, chairs pushed in, and the space guest-ready." },
-  { id:"pt12", name:"HR Partner Poster",                   desc:"Take a photo of the HR Partner poster. It should be posted in a visible location and current." },
-  { id:"pt13", name:"ServSafe Manager Certification",      desc:"Take a photo of the current ServSafe Manager Certification. It should be posted and not expired." },
-  { id:"pt14", name:"Coffee Station",                      desc:"Take a photo of the coffee station setup. It should be clean, stocked, and ready for service." },
-  { id:"pt15", name:"Front Door",                          desc:"Take a photo of the front door area inside and out. Glass should be clean and free of smudges and fingerprints." },
-  { id:"pt16", name:"Pie Slice Holding Shelves",           desc:"Take a photo of the pie slice holding shelves. Slices should be properly labeled." },
-  { id:"pt17", name:"Women's Room Toilet",                 desc:"Take a photo of the women's restroom toilet. It should be clean with no staining or buildup." },
-  { id:"pt18", name:"Women's Room Hand Sink",              desc:"Take a photo of the women's restroom hand sink. It should be clean, stocked with soap and paper towels." },
-  { id:"pt19", name:"Men's Room Toilet",                   desc:"Take a photo of the men's restroom toilet. It should be clean with no staining or buildup." },
-  { id:"pt20", name:"Men's Room Hand Sink",                desc:"Take a photo of the men's restroom hand sink. It should be clean, stocked with soap and paper towels." },
-  { id:"pt21", name:"Dry Storage Organization",            desc:"Take a photo of the dry storage area. Product should be organized, labeled, off the floor, and FIFO rotated." },
-  { id:"pt22", name:"Patio",                               desc:"Take a photo of the patio. Tables and chairs should be clean, arranged neatly, and ready for guests." },
-  { id:"pt23", name:"Toast POS — Customer Service Side",   desc:"Take a photo of the Toast POS terminal on the customer service side. Screen should be clean and functioning." },
-  { id:"pt24", name:"Toast POS — Customer Side",           desc:"Take a photo of the Toast POS terminal on the customer-facing side. Screen should be clean and functioning." },
-  { id:"pt25", name:"Sandwich Cooler Product Levels",      desc:"Take a top-down photo of the sandwich cooler pans. Product should not exceed the pan fill line. Overfilling puts product in the temperature danger zone." },
-  { id:"pt26", name:"Salad Cooler Product Levels",         desc:"Take a top-down photo of the salad cooler pans. Product should not exceed the pan fill line. Overfilling puts product in the temperature danger zone." }
+  // Regular rotation items
+  { id:"pt2",  name:"A-Frame Sign",                          desc:"Take a photo of your A-Frame sign placed on the sidewalk. It should be visible, upright, and displaying current messaging." },
+  { id:"pt3",  name:"Trash/Recycling Area",                  desc:"Take a photo of the trash and recycling area. It should be clean, organized, and lids closed." },
+  { id:"pt7",  name:"Ice Cream Freezer",                     desc:"Take a photo of the ice cream freezer. It should be clean, stocked with vanilla, and free of ice buildup." },
+  { id:"pt8",  name:"Walk-In Cooler Organization",           desc:"Take a photo of the walk-in cooler interior. Product should be organized, labeled, and stored properly off the floor." },
+  { id:"pt9",  name:"Freezer Organization",                  desc:"Take a photo of the freezer interior. Product should be organized, labeled, dated, and stored properly." },
+  { id:"pt10", name:"Bake/Load List",                        desc:"Take a photo of today's bake and load list. It should be filled out, posted, and visible to the team." },
+  { id:"pt11", name:"Dining Room",                           desc:"Take a photo of the dining room. Tables should be clean, chairs pushed in, and the space guest-ready." },
+  { id:"pt14", name:"Coffee Station",                        desc:"Take a photo of the coffee station setup. It should be clean, stocked, and ready for service." },
+  { id:"pt15", name:"Front Door",                            desc:"Take a photo of the front door area inside and out. Glass should be clean and free of smudges and fingerprints." },
+  { id:"pt16", name:"Pie Slice Holding Shelves",             desc:"Take a photo of the pie slice holding shelves. Slices should be properly labeled." },
+  { id:"pt17", name:"Women's Room Toilet",                   desc:"Take a photo of the women's restroom toilet. It should be clean with no staining or buildup." },
+  { id:"pt18", name:"Women's Room Hand Sink",                desc:"Take a photo of the women's restroom hand sink. It should be clean, stocked with soap and paper towels." },
+  { id:"pt19", name:"Men's Room Toilet",                     desc:"Take a photo of the men's restroom toilet. It should be clean with no staining or buildup." },
+  { id:"pt20", name:"Men's Room Hand Sink",                  desc:"Take a photo of the men's restroom hand sink. It should be clean, stocked with soap and paper towels." },
+  { id:"pt21", name:"Dry Storage Organization",              desc:"Take a photo of the dry storage area. Product should be organized, labeled, off the floor, and FIFO rotated." },
+  { id:"pt22", name:"Patio",                                 desc:"Take a photo of the patio. Tables and chairs should be clean, arranged neatly, and ready for guests." },
+  { id:"pt23", name:"Toast POS — Customer Service Side",     desc:"Take a photo of the Toast POS terminal on the customer service side. Screen should be clean and functioning." },
+  { id:"pt24", name:"Toast POS — Customer Side",             desc:"Take a photo of the Toast POS terminal on the customer-facing side. Screen should be clean and functioning." },
+  { id:"pt25", name:"Sandwich Cooler Product Levels",        desc:"Take a top-down photo of the sandwich cooler pans. Product should not exceed the pan fill line. Overfilling puts product in the temperature danger zone." },
+  { id:"pt26", name:"Salad Cooler Product Levels",           desc:"Take a top-down photo of the salad cooler pans. Product should not exceed the pan fill line. Overfilling puts product in the temperature danger zone." },
+  { id:"pt27", name:"Parking Lot — Front Door",              desc:"Take a photo of the parking lot from the perspective of the front door. It should be clean, free of trash, and well-maintained." },
+  { id:"pt28", name:"Parking Lot — Back Door",               desc:"Take a photo of the parking lot from the perspective of the back door. It should be clean, free of trash, and well-maintained." },
+  { id:"pt29", name:"Dining Room Thermostat",                desc:"Take a photo of the dining room thermostat showing the current temperature setting." },
+  { id:"pt30", name:"Kitchen Thermostat",                    desc:"Take a photo of the kitchen thermostat showing the current temperature setting." },
+  // Sanitizer buckets — appear ~3x more frequently
+  { id:"pt4a", name:"Dining Room Sanitizer Bucket",          desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt4b", name:"Dining Room Sanitizer Bucket",          desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt4c", name:"Dining Room Sanitizer Bucket",          desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt4d", name:"Dining Room Sanitizer Bucket",          desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt4e", name:"Dining Room Sanitizer Bucket",          desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt4f", name:"Dining Room Sanitizer Bucket",          desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt4g", name:"Dining Room Sanitizer Bucket",          desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt4h", name:"Dining Room Sanitizer Bucket",          desc:"Take a photo of the dining room sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5a", name:"Customer Service Sanitizer Bucket",     desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5b", name:"Customer Service Sanitizer Bucket",     desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5c", name:"Customer Service Sanitizer Bucket",     desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5d", name:"Customer Service Sanitizer Bucket",     desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5e", name:"Customer Service Sanitizer Bucket",     desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5f", name:"Customer Service Sanitizer Bucket",     desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5g", name:"Customer Service Sanitizer Bucket",     desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt5h", name:"Customer Service Sanitizer Bucket",     desc:"Take a photo of the customer service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6a", name:"Food Service Sanitizer Bucket",         desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6b", name:"Food Service Sanitizer Bucket",         desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6c", name:"Food Service Sanitizer Bucket",         desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6d", name:"Food Service Sanitizer Bucket",         desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6e", name:"Food Service Sanitizer Bucket",         desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6f", name:"Food Service Sanitizer Bucket",         desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6g", name:"Food Service Sanitizer Bucket",         desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+  { id:"pt6h", name:"Food Service Sanitizer Bucket",         desc:"Take a photo of the food service sanitizer bucket with a test strip showing proper concentration." },
+];
+
+// Monthly tasks — show on 1st of every month
+const MONTHLY_PHOTO_TASKS = [
+  { id:"mpt1", name:"HR Partner Poster",               desc:"Take a photo of the HR Partner poster. It should be posted in a visible location and current." },
+  { id:"mpt2", name:"ServSafe Manager Certification",  desc:"Take a photo of the current ServSafe Manager Certification. It should be posted and not expired." }
+];
+
+
+// PM-only tasks — vehicle inspection
+const PM_ONLY_PHOTO_TASKS = [
+  { id:"pm1", name:"Delivery Vehicle — Driver Side",      desc:"Take a photo of the delivery vehicle from the driver side. Check for any damage, cleanliness, and GT Pie branding." },
+  { id:"pm2", name:"Delivery Vehicle — Passenger Side",  desc:"Take a photo of the delivery vehicle from the passenger side. Check for any damage, cleanliness, and GT Pie branding." },
+  { id:"pm3", name:"Delivery Vehicle — Front",           desc:"Take a photo of the delivery vehicle from the front. Check for any damage and cleanliness." },
+  { id:"pm4", name:"Delivery Vehicle — Back",            desc:"Take a photo of the delivery vehicle from the back. Check for any damage, cleanliness, and that doors are secure." }
 ];
 
 // Get daily photo task seeded by date — AM and PM get different tasks
+// On the 1st of the month, override with monthly tasks
+// PM shift rotates through vehicle inspection photos instead of main list
 function getDailyPhotoTask(shift) {
-  const today = new Date().toISOString().slice(0,10);
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  // 1st of month — return monthly compliance tasks
+  if (dayOfMonth === 1) {
+    return shift === 'am' ? MONTHLY_PHOTO_TASKS[0] : MONTHLY_PHOTO_TASKS[1];
+  }
+  const dateStr = today.toISOString().slice(0,10);
   let seed = 0;
-  for (let c of today) seed += c.charCodeAt(0);
+  for (let c of dateStr) seed += c.charCodeAt(0);
+  // PM shift rotates through vehicle photos
+  if (shift === 'pm') {
+    const pmIndex = seed % PM_ONLY_PHOTO_TASKS.length;
+    return PM_ONLY_PHOTO_TASKS[pmIndex];
+  }
+  // AM shift uses main rotation
   const amIndex = seed % DAILY_PHOTO_TASKS.length;
-  const pmIndex = (seed + 13) % DAILY_PHOTO_TASKS.length; // offset so AM and PM differ
-  return shift === 'am' ? DAILY_PHOTO_TASKS[amIndex] : DAILY_PHOTO_TASKS[pmIndex];
+  return DAILY_PHOTO_TASKS[amIndex];
 }
 
 
@@ -1606,7 +1659,7 @@ function renderDashboard(submissions) {
         </g>
       
   </svg></div>
-  <div class="splash-title">GT Pie Daily Checklists<br><span style="font-size:14px;color:rgba(255,255,255,0.5);font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:1px;">Ver. 1.2</span></div>
+  <div class="splash-title">GT Pie Daily Checklists<br><span style="font-size:14px;color:rgba(255,255,255,0.5);font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:1px;">Ver. 1.3</span></div>
   <div class="splash-sub">Best on the Street · Every Day</div>
   <div class="login-card">
     <h2>Sign In to Start</h2>
